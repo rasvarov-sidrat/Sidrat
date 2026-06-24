@@ -1,124 +1,93 @@
-import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Users, Gift, Gamepad2, TrendingUp } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { initializeMockData } from '@/data/mockData';
+import { BadgePercent, Users, Wallet } from 'lucide-react';
+import HeroCarousel from '@/components/HeroCarousel';
+import { formatRuble, getProductCoverImage, getProductImages, loadProducts } from '@/lib/mvp';
 
 export default function Home() {
-  useEffect(() => {
-    initializeMockData();
-  }, []);
+  const products = loadProducts();
 
-  const features = [
+  const highlights = [
     {
       icon: Users,
       title: 'Групповые покупки 2.0',
-      description: 'Покупайте вместе с друзьями и получайте скидки до 30%',
-      color: '#2A7F6E',
+      text: 'Один товар, одно семейство, много допустимых вариаций внутри одной сессии.',
     },
     {
-      icon: Gift,
-      title: 'Реферальная программа',
-      description: 'Приглашайте друзей и получайте 500 бонусов за каждого',
-      color: '#C5A059',
+      icon: BadgePercent,
+      title: 'Пошаговая скидка',
+      text: 'Цена падает по мере занятия слотов и ограничивается потолком скидки.',
     },
     {
-      icon: Gamepad2,
-      title: 'Игра "Плоды лотоса"',
-      description: 'Собирайте плоды и обменивайте их на дополнительные скидки',
-      color: '#2A7F6E',
+      icon: Wallet,
+      title: 'Внутренний баланс',
+      text: 'Разница по цене уходит в wallet и может быть потрачена или выведена с комиссией.',
     },
   ];
 
   return (
     <div className="space-y-16">
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-[#2A7F6E] to-[#236b5d] rounded-3xl overflow-hidden text-white">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
-            backgroundSize: '40px 40px',
-          }} />
-        </div>
-        
-        <div className="relative px-8 py-16 md:py-24 md:px-16">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="max-w-2xl"
-          >
-            <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
-              Покупайте вместе,<br />
-              <span className="text-[#C5A059]">экономьте больше</span>
-            </h1>
-            <p className="text-xl text-white/80 mb-8 leading-relaxed">
-              SIDRAT — это новый способ покупок. Создавайте групповые сессии, 
-              приглашайте друзей и получайте эксклюзивные скидки до 30%.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link to="/catalog">
-                <Button size="lg" className="bg-white text-[#2A7F6E] hover:bg-gray-100 px-8">
-                  Начать покупки
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-              <Link to="/sessions">
-                <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 px-8">
-                  <Users className="w-4 h-4 mr-2" />
-                  Активные сессии
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
-        </div>
+      <section>
+        <HeroCarousel />
       </section>
 
-      {/* Features Section */}
-      <section>
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Почему SIDRAT?</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Мы объединили лучшие практики групповых покупок с игровыми механиками 
-            и реферальной программой
-          </p>
+      <section className="grid gap-6 md:grid-cols-3">
+        {highlights.map((item, index) => (
+          <motion.div
+            key={item.title}
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.08 }}
+            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+          >
+            <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#2A7F6E]/10 text-[#2A7F6E]">
+              <item.icon className="h-6 w-6" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">{item.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-gray-600">{item.text}</p>
+          </motion.div>
+        ))}
+      </section>
+
+      <section className="space-y-6">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Товары с картинками</h2>
+            <p className="mt-1 text-gray-600">Картинки уже лежат в данных, так что можно сразу показывать витрину без дополнительной загрузки.</p>
+          </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
-          {features.map((feature, index) => (
-            <motion.div
-              key={feature.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {products.slice(0, 3).map((product) => (
+            <Link
+              key={product.id}
+              to={`/product/${product.slug}`}
+              className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
-              <div 
-                className="w-14 h-14 rounded-xl flex items-center justify-center mb-6"
-                style={{ backgroundColor: `${feature.color}15` }}
-              >
-                <feature.icon className="w-7 h-7" style={{ color: feature.color }} />
+              <img src={getProductCoverImage(product)} alt={product.name} className="h-48 w-full object-cover" loading="lazy" />
+              <div className="p-5">
+                <p className="text-sm text-[#2A7F6E]">{product.category}</p>
+                <h3 className="mt-1 text-lg font-semibold text-gray-900">{product.name}</h3>
+                <p className="mt-2 line-clamp-2 text-sm text-gray-600">{product.description}</p>
+                <div className="mt-4 flex gap-2 overflow-hidden">
+                  {getProductImages(product).slice(0, 3).map((thumb) => (
+                    <img
+                      key={thumb}
+                      src={thumb}
+                      alt=""
+                      className="h-12 w-12 rounded-lg border border-gray-200 object-cover"
+                      loading="lazy"
+                    />
+                  ))}
+                </div>
+                <div className="mt-4 flex items-center justify-between text-sm">
+                  <span className="text-gray-500">{product.variants.length} вариантов</span>
+                  <span className="font-semibold text-gray-900">{formatRuble(product.basePrice)}</span>
+                </div>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">{feature.title}</h3>
-              <p className="text-gray-600 leading-relaxed">{feature.description}</p>
-            </motion.div>
+            </Link>
           ))}
         </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="bg-gradient-to-r from-[#C5A059]/10 to-[#2A7F6E]/10 rounded-2xl p-8 md:p-12 text-center">
-        <TrendingUp className="w-12 h-12 mx-auto mb-4 text-[#2A7F6E]" />
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">Готовы начать экономить?</h2>
-        <p className="text-gray-600 mb-8 max-w-xl mx-auto">
-          Присоединяйтесь к тысячам пользователей, которые уже покупают умнее вместе с SIDRAT
-        </p>
-        <Link to="/catalog">
-          <Button size="lg" className="bg-[#2A7F6E] hover:bg-[#236b5d] text-white px-8">
-            Смотреть каталог
-          </Button>
-        </Link>
       </section>
     </div>
   );

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Minus, Plus, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Product, ProductVariant, SelectedVariant } from '@/types';
+import { getProductCoverImage } from '@/lib/mvp';
 
 interface VariantSelectorProps {
   product: Product;
@@ -72,7 +73,7 @@ export default function VariantSelector({ product, isOpen, onClose, onConfirm }:
               {/* Product Image */}
               <div className="flex gap-4 mb-6">
                 <img
-                  src={product.image}
+                  src={getProductCoverImage(product)}
                   alt={product.name}
                   className="w-24 h-24 object-cover rounded-xl"
                 />

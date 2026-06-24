@@ -1,169 +1,207 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { Plus, Filter, TrendingUp, Users, Percent } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Clock3, Filter, Layers3, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import SessionCard from '@/components/gb2/SessionCard';
-import { GB2Session, User } from '@/types';
-import { useI18n } from '@/i18n/I18nProvider';
+import { Input } from '@/components/ui/input';
+import { catalogCategories, getCatalogCategorySearchText } from '@/lib/catalog';
+import {
+  formatRuble,
+  getSessionFillBucket,
+  getSessionFillPercent,
+  getSessionNextPrice,
+  loadProducts,
+  loadSessions,
+  SESSION_FILL_BUCKET_OPTIONS,
+} from '@/lib/mvp';
+import type { User } from '@/types';
 
 interface SessionsProps {
   user: User | null;
 }
 
 export default function Sessions({ user }: SessionsProps) {
-  const { t } = useI18n();
-  const [sessions, setSessions] = useState<GB2Session[]>([]);
-  const [filter, setFilter] = useState<'all' | 'my'>('all');
-  const [sortBy, setSortBy] = useState<'participants' | 'discount'>('participants');
-  const [stats, setStats] = useState({ total: 0, participants: 0, maxDiscount: 0 });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [mode, setMode] = useState<'all' | 'my'>('all');
+  const sessions = loadSessions();
+  const products = loadProducts();
+  const familyById = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
+  const query = searchParams.get('query') ?? '';
+  const category = searchParams.get('category') ?? 'all';
+  const fill = searchParams.get('fill') ?? '';
 
-  useEffect(() => {
-    const storedSessions = JSON.parse(localStorage.getItem('gb2Sessions') || '[]');
-    const allSessions = storedSessions.filter((s: GB2Session) => s.status === 'active');
-    
-    // Calculate stats
-    const totalParticipants = allSessions.reduce((sum: number, s: GB2Session) => 
-      sum + s.participants.length, 0);
-    const maxDisc = allSessions.length > 0 
-      ? Math.max(...allSessions.map((s: GB2Session) => s.currentTier.discount))
-      : 0;
-    
-    setStats({
-      total: allSessions.length,
-      participants: totalParticipants,
-      maxDiscount: maxDisc
-    });
+  const normalizedCategory = catalogCategories.some((item) => item.id === category) ? category : 'all';
+  const normalizedFill = SESSION_FILL_BUCKET_OPTIONS.some((item) => item.value === fill) ? fill : '';
 
-    // Filter and sort
-    let filtered = allSessions;
-    if (filter === 'my' && user) {
-      filtered = allSessions.filter((s: GB2Session) => 
-        s.creatorId === user.id || s.participants.some((p: any) => p.userId === user.id)
-      );
+  const updateSearchParam = (key: string, value: string | null, replace = false) => {
+    const next = new URLSearchParams(searchParams);
+    if (!value) {
+      next.delete(key);
+    } else {
+      next.set(key, value);
     }
+    setSearchParams(next, { replace });
+  };
 
-    filtered.sort((a: GB2Session, b: GB2Session) => {
-      if (sortBy === 'participants') {
-        return b.participants.length - a.participants.length;
-      }
-      return b.currentTier.discount - a.currentTier.discount;
-    });
+  const visibleSessions = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
 
-    setSessions(filtered);
-  }, [filter, sortBy, user]);
+    return sessions
+      .filter((session) => session.status === 'active')
+      .filter((session) => {
+        if (mode === 'my' && user) {
+          return session.createdBy === user.id || session.participants.some((participant) => participant.userId === user.id);
+        }
+        return true;
+      })
+      .filter((session) => {
+        const family = familyById.get(session.familyId);
+        if (!family) return false;
+
+        if (normalizedCategory !== 'all' && family.category !== normalizedCategory) {
+          return false;
+        }
+
+        if (normalizedFill && getSessionFillBucket(session) !== normalizedFill) {
+          return false;
+        }
+
+        if (!normalizedQuery) {
+          return true;
+        }
+
+        const searchIndex = [
+          session.title,
+          session.description ?? '',
+          session.familySlug,
+          family.name,
+          family.description,
+          family.category,
+          family.categorySlug ?? '',
+          getCatalogCategorySearchText(family.category),
+        ]
+          .join(' ')
+          .toLowerCase();
+
+        return searchIndex.includes(normalizedQuery);
+      });
+  }, [familyById, mode, normalizedCategory, normalizedFill, query, sessions, user]);
+
+  const totalParticipants = visibleSessions.reduce((sum, session) => sum + session.participants.length, 0);
+  const maxSavings = visibleSessions.length > 0 ? Math.max(...visibleSessions.map((session) => session.basePriceSnapshot - session.currentFloorPrice)) : 0;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">{t('gb2.title', 'gb2')}</h1>
-          <p className="text-gray-600 mt-1">Покупайте вместе, экономьте больше!</p>
+          <h1 className="text-3xl font-bold text-gray-900">Активные сессии</h1>
+          <p className="mt-1 text-gray-600">Сессии, которые уже живут по snapshot-логике и принимают новые слоты.</p>
         </div>
         <Link to="/catalog">
-          <Button className="bg-[#2A7F6E] hover:bg-[#236b5d] text-white">
-            <Plus className="w-4 h-4 mr-2" />
-            Создать сессию
+          <Button className="bg-[#2A7F6E] text-white hover:bg-[#236b5d]">
+            <Layers3 className="mr-2 h-4 w-4" />
+            Создать новую
           </Button>
         </Link>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Активных сессий</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-            </div>
-            <div className="w-12 h-12 bg-[#2A7F6E]/10 rounded-full flex items-center justify-center">
-              <Filter className="w-6 h-6 text-[#2A7F6E]" />
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Всего участников</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.participants}</p>
-            </div>
-            <div className="w-12 h-12 bg-[#C5A059]/10 rounded-full flex items-center justify-center">
-              <Users className="w-6 h-6 text-[#C5A059]" />
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Макс. скидка</p>
-              <p className="text-2xl font-bold text-[#C5A059]">{stats.maxDiscount}%</p>
-            </div>
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-              <Percent className="w-6 h-6 text-red-600" />
-            </div>
-          </div>
-        </motion.div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-500">Активных сессий</p>
+          <p className="mt-2 text-3xl font-bold text-gray-900">{visibleSessions.length}</p>
+        </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-500">Участников</p>
+          <p className="mt-2 text-3xl font-bold text-gray-900">{totalParticipants}</p>
+        </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-500">Макс. экономия</p>
+          <p className="mt-2 text-3xl font-bold text-gray-900">{formatRuble(maxSavings)}</p>
+        </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-        <Tabs value={filter} onValueChange={(v) => setFilter(v as 'all' | 'my')}>
-          <TabsList>
-            <TabsTrigger value="all">Все сессии</TabsTrigger>
-            {user && <TabsTrigger value="my">Мои сессии</TabsTrigger>}
-          </TabsList>
-        </Tabs>
-
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">Сортировать:</span>
+      <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div className="relative">
+          <Filter className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input
+            value={query}
+            onChange={(e) => updateSearchParam('query', e.target.value.trim() ? e.target.value : null, true)}
+            placeholder="Поиск по сессии, товару или категории"
+            className="pl-10 md:w-96"
+          />
+        </div>
+        <div className="flex flex-wrap gap-3">
           <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'participants' | 'discount')}
-            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2A7F6E]"
+            value={normalizedCategory}
+            onChange={(e) => updateSearchParam('category', e.target.value === 'all' ? null : e.target.value)}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2A7F6E]"
           >
-            <option value="participants">По участникам</option>
-            <option value="discount">По скидке</option>
+            {catalogCategories.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
+              </option>
+            ))}
           </select>
+          <select
+            value={normalizedFill}
+            onChange={(e) => updateSearchParam('fill', e.target.value || null)}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2A7F6E]"
+          >
+            <option value="">Любая заполненность</option>
+            {SESSION_FILL_BUCKET_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <div className="flex gap-2">
+            <Button variant={mode === 'all' ? 'default' : 'outline'} onClick={() => setMode('all')}>Все</Button>
+            {user ? <Button variant={mode === 'my' ? 'default' : 'outline'} onClick={() => setMode('my')}>Мои</Button> : null}
+          </div>
         </div>
       </div>
 
-      {/* Sessions Grid */}
-      {sessions.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sessions.map((session) => (
-            <SessionCard key={session.id} session={session} />
-          ))}
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        {visibleSessions.map((session) => {
+          const family = familyById.get(session.familyId);
+          const nextPrice = getSessionNextPrice(session);
+          const fillPercent = getSessionFillPercent(session);
+          return (
+            <Link key={session.id} to={`/session/${session.id}`} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-[#2A7F6E]">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">{session.title}</h3>
+                  <p className="mt-1 text-sm text-gray-600">{family?.name || session.familySlug}</p>
+                </div>
+                <span className="rounded-full bg-[#2A7F6E]/10 px-3 py-1 text-xs text-[#2A7F6E]">{session.accessType}</span>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm text-gray-600">
+                  <span className="inline-flex items-center gap-1"><Users className="h-4 w-4" />{session.currentSlots}/{session.targetSlots}</span>
+                  <span className="inline-flex items-center gap-1"><Clock3 className="h-4 w-4" />{new Date(session.expiresAt).toLocaleString()}</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                  <div className="h-full rounded-full bg-[#2A7F6E]" style={{ width: `${fillPercent}%` }} />
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">Текущая цена</span>
+                  <span className="font-semibold text-gray-900">{formatRuble(session.currentFloorPrice)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">Следующий слот</span>
+                  <span className="font-semibold text-gray-900">{formatRuble(nextPrice)}</span>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      {visibleSessions.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center text-gray-500">
+          Сессий по этим фильтрам пока нет.
         </div>
-      ) : (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <TrendingUp className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Нет активных сессий</h3>
-          <p className="text-gray-500 mb-4">Будьте первым, кто создаст групповую покупку!</p>
-          <Link to="/catalog">
-            <Button className="bg-[#2A7F6E] hover:bg-[#236b5d] text-white">
-              Выбрать товар
-            </Button>
-          </Link>
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }

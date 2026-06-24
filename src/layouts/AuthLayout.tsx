@@ -1,5 +1,6 @@
-import { Outlet } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
 
 export default function AuthLayout() {
   return (
@@ -11,8 +12,10 @@ export default function AuthLayout() {
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[#2A7F6E]">SIDRAT</h1>
-          <p className="text-gray-600 mt-2">Group Buying 2.0</p>
+          <Button asChild variant="ghost" className="text-3xl font-bold text-[#2A7F6E] hover:bg-transparent hover:text-[#236b5d]">
+            <Link to="/">SIDRAT</Link>
+          </Button>
+          <p className="mt-2 text-gray-600">MVP маркетплейса для групповых покупок</p>
         </div>
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <Outlet />

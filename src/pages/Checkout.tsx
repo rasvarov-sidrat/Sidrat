@@ -1,280 +1,357 @@
-import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { CreditCard, Truck, Check } from 'lucide-react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { CreditCard, MapPin, PackageCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
+import { confirmOrder, formatRuble, loadOrders } from '@/lib/mvp';
+import type { ShippingAddress, User } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
-import { Order, User, CartItem } from '@/types';
+import {
+  COUNTRY_OPTIONS,
+  buildPhonePreview,
+  fetchYandexAddressSuggestions,
+  formatPhoneDigits,
+  getPhonePlaceholder,
+  normalizePhoneDigits,
+  searchRussianCities,
+  type AddressSuggestion,
+  type CityOption,
+} from '@/lib/checkout-location';
 
-export default function Checkout() {
+interface CheckoutProps {
+  user: User | null;
+}
+
+export default function Checkout({ user }: CheckoutProps) {
+  const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('card');
-  
-  const appliedBonuses = location.state?.appliedBonuses || 0;
-  const cart: CartItem[] = JSON.parse(localStorage.getItem('cart') || '[]');
-  const currentUser: User | null = JSON.parse(localStorage.getItem('currentUser') || 'null');
 
-  const [formData, setFormData] = useState({
+  const order = useMemo(() => loadOrders().find((item) => item.id === orderId) || null, [orderId, loading]);
+  const [phoneCountryCode, setPhoneCountryCode] = useState<'RU' | 'AE' | 'MY'>('RU');
+  const [phoneDigits, setPhoneDigits] = useState('');
+  const [cityQuery, setCityQuery] = useState('');
+  const [citySuggestions, setCitySuggestions] = useState<CityOption[]>([]);
+  const [cityLoading, setCityLoading] = useState(false);
+  const [addressQuery, setAddressQuery] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
+  const [addressLoading, setAddressLoading] = useState(false);
+
+  const [address, setAddress] = useState<ShippingAddress>({
     fullName: '',
     phone: '',
     address: '',
     city: '',
     postalCode: '',
-    country: '',
+    country: 'Российская Федерация',
   });
 
-  const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const finalAmount = Math.max(0, subtotal - appliedBonuses);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    // Create order
-    const order: Order = {
-      id: `ORD-${Date.now()}`,
-      userId: currentUser?.id || 'guest',
-      items: cart,
-      totalAmount: subtotal,
-      discountAmount: subtotal - finalAmount,
-      bonusUsed: appliedBonuses,
-      finalAmount: finalAmount,
-      status: 'pending',
-      shippingAddress: formData,
-      paymentMethod: paymentMethod,
-      createdAt: new Date().toISOString(),
+  useEffect(() => {
+    const countryToDialCode: Record<string, 'RU' | 'AE' | 'MY'> = {
+      'Российская Федерация': 'RU',
+      'ОАЭ': 'AE',
+      'Малайзия': 'MY',
     };
+    setPhoneCountryCode(countryToDialCode[address.country] || 'RU');
+  }, [address.country]);
 
-    // Save order
-    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-    orders.push(order);
-    localStorage.setItem('orders', JSON.stringify(orders));
-
-    // Clear cart
-    localStorage.setItem('cart', '[]');
-    window.dispatchEvent(new Event('storage'));
-
-    // Deduct bonuses
-    if (appliedBonuses > 0 && currentUser) {
-      const users = JSON.parse(localStorage.getItem('demoUsers') || '[]');
-      const userIndex = users.findIndex((u: User) => u.id === currentUser.id);
-      if (userIndex !== -1) {
-        users[userIndex].bonusBalance -= appliedBonuses;
-        localStorage.setItem('demoUsers', JSON.stringify(users));
-        localStorage.setItem('currentUser', JSON.stringify(users[userIndex]));
+  useEffect(() => {
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      const query = cityQuery.trim();
+      if (query.length < 2) {
+        if (active) {
+          setCitySuggestions([]);
+          setCityLoading(false);
+        }
+        return;
       }
-
-      // Add transaction
-      const transactions = JSON.parse(localStorage.getItem('bonusTransactions') || '[]');
-      transactions.push({
-        id: `trans-${Date.now()}`,
-        userId: currentUser.id,
-        type: 'spent',
-        amount: appliedBonuses,
-        description: 'Использовано при оформлении заказа',
-        relatedOrderId: order.id,
-        createdAt: new Date().toISOString(),
-      });
-      localStorage.setItem('bonusTransactions', JSON.stringify(transactions));
-    }
-
-    // Award referral bonus (5% of purchase)
-    if (currentUser?.referredBy) {
-      const bonusAmount = Math.round(finalAmount * 0.05);
-      const users = JSON.parse(localStorage.getItem('demoUsers') || '[]');
-      const referrerIndex = users.findIndex((u: User) => u.id === currentUser.referredBy);
-      
-      if (referrerIndex !== -1) {
-        users[referrerIndex].bonusBalance += bonusAmount;
-        localStorage.setItem('demoUsers', JSON.stringify(users));
-
-        const transactions = JSON.parse(localStorage.getItem('bonusTransactions') || '[]');
-        transactions.push({
-          id: `trans-${Date.now()}`,
-          userId: currentUser.referredBy,
-          type: 'earned',
-          amount: bonusAmount,
-          description: `5% от покупки ${currentUser.name}`,
-          relatedUserId: currentUser.id,
-          relatedOrderId: order.id,
-          createdAt: new Date().toISOString(),
-        });
-        localStorage.setItem('bonusTransactions', JSON.stringify(transactions));
+      setCityLoading(true);
+      const results = await searchRussianCities(query, 10);
+      if (active) {
+        setCitySuggestions(results);
+        setCityLoading(false);
       }
-    }
+    }, 220);
 
-    setTimeout(() => {
-      setLoading(false);
-      navigate(`/order-success/${order.id}`);
-    }, 1500);
-  };
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [cityQuery]);
 
-  if (cart.length === 0) {
-    return (
-      <div className="text-center py-16">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Корзина пуста</h2>
-        <Button onClick={() => navigate('/catalog')} className="bg-[#2A7F6E]">
-          В каталог
-        </Button>
-      </div>
-    );
+  useEffect(() => {
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      const query = addressQuery.trim();
+      if (query.length < 3) {
+        if (active) {
+          setAddressSuggestions([]);
+          setAddressLoading(false);
+        }
+        return;
+      }
+      setAddressLoading(true);
+      const countryIso = address.country === 'ОАЭ' ? 'ae' : address.country === 'Малайзия' ? 'my' : 'ru';
+      const results = await fetchYandexAddressSuggestions(query, countryIso);
+      if (active) {
+        setAddressSuggestions(results);
+        setAddressLoading(false);
+      }
+    }, 280);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [address.country, addressQuery]);
+
+  if (!order) {
+    return <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">Заказ не найден</div>;
   }
 
-  return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Оформление заказа</h1>
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    try {
+      const normalizedPhone = buildPhonePreview(phoneCountryCode, phoneDigits);
+      const shippingAddress: ShippingAddress = {
+        ...address,
+        fullName: address.fullName.trim(),
+        phone: normalizedPhone,
+        address: address.address.trim(),
+        city: address.city.trim(),
+        postalCode: address.postalCode.trim(),
+        country: address.country,
+      };
 
-      <div className="grid md:grid-cols-3 gap-8">
-        <div className="md:col-span-2">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Shipping Address */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-xl p-6 shadow-sm border border-gray-200"
-            >
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Truck className="w-5 h-5 mr-2 text-[#2A7F6E]" />
-                Адрес доставки
-              </h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <Label htmlFor="fullName">ФИО</Label>
-                  <Input
-                    id="fullName"
-                    required
-                    value={formData.fullName}
-                    onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                    className="mt-1"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label htmlFor="phone">Телефон</Label>
+      confirmOrder(order.id, shippingAddress);
+      navigate(`/order-success/${order.id}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Не удалось подтвердить заказ';
+      toast({ title: 'Ошибка', description: message, variant: 'destructive' });
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div>
+        <p className="text-sm font-medium uppercase tracking-wide text-[#2A7F6E]">Оформление заказа</p>
+        <h1 className="mt-2 text-3xl font-bold text-gray-900">Оформление заказа</h1>
+        <p className="mt-2 text-gray-600">Оплата слота уже проведена. Здесь фиксируем доставку и финальный статус заказа.</p>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardContent className="space-y-5 p-6">
+            <div className="flex items-center gap-2 text-gray-900">
+              <MapPin className="h-5 w-5 text-[#2A7F6E]" />
+              <h2 className="text-lg font-semibold">Адрес доставки</h2>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="fullName">ФИО</Label>
+                <Input
+                  id="fullName"
+                  value={address.fullName}
+                  onChange={(e) => setAddress({ ...address, fullName: e.target.value })}
+                  className="mt-1"
+                  placeholder="Введите ФИО"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="phone">Телефон</Label>
+                <div className="mt-1 grid grid-cols-[112px_minmax(0,1fr)] gap-3">
+                  <Select value={phoneCountryCode} onValueChange={(value) => setPhoneCountryCode(value as 'RU' | 'AE' | 'MY')}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Код" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COUNTRY_OPTIONS.map((option) => (
+                        <SelectItem key={option.code} value={option.code}>
+                          {option.dialCode} · {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Input
                     id="phone"
-                    type="tel"
+                    value={formatPhoneDigits(phoneDigits, phoneCountryCode)}
+                    onChange={(e) => setPhoneDigits(normalizePhoneDigits(e.target.value))}
+                    placeholder={getPhonePlaceholder(phoneCountryCode)}
                     required
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    className="mt-1"
                   />
                 </div>
-                <div className="col-span-2">
-                  <Label htmlFor="address">Адрес</Label>
+                <p className="mt-1 text-xs text-gray-500">
+                  Формат:{' '}
+                  {phoneDigits
+                    ? buildPhonePreview(phoneCountryCode, phoneDigits)
+                    : `${COUNTRY_OPTIONS.find((item) => item.code === phoneCountryCode)?.dialCode || COUNTRY_OPTIONS[0].dialCode} ${getPhonePlaceholder(phoneCountryCode)}`}
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="address">Адрес</Label>
+                <div className="relative mt-1">
                   <Input
                     id="address"
+                    value={addressQuery}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setAddressQuery(value);
+                      setAddress({ ...address, address: value });
+                    }}
+                    className="pr-24"
+                    placeholder="Улица, дом, квартира"
                     required
-                    value={formData.address}
-                    onChange={(e) => setFormData({...formData, address: e.target.value})}
-                    className="mt-1"
                   />
+                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                    {addressLoading ? 'Ищем...' : 'Yandex'}
+                  </div>
+                  {addressSuggestions.length > 0 ? (
+                    <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-56 overflow-auto rounded-2xl border border-gray-200 bg-white shadow-lg">
+                      {addressSuggestions.map((suggestion) => (
+                        <button
+                          key={suggestion.value}
+                          type="button"
+                          className="block w-full border-b border-gray-100 px-4 py-3 text-left text-sm last:border-0 hover:bg-gray-50"
+                          onClick={() => {
+                            setAddress({ ...address, address: suggestion.value });
+                            setAddressQuery(suggestion.value);
+                            setAddressSuggestions([]);
+                          }}
+                        >
+                          <div className="font-medium text-gray-900">{suggestion.value}</div>
+                          {suggestion.subtitle ? <div className="mt-1 text-xs text-gray-500">{suggestion.subtitle}</div> : null}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
-                <div>
+                {import.meta.env.VITE_YANDEX_SUGGEST_API_KEY ? null : (
+                  <p className="mt-1 text-xs text-gray-500">Подсказки адреса включатся после добавления `VITE_YANDEX_SUGGEST_API_KEY`.</p>
+                )}
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="relative">
                   <Label htmlFor="city">Город</Label>
                   <Input
                     id="city"
-                    required
-                    value={formData.city}
-                    onChange={(e) => setFormData({...formData, city: e.target.value})}
+                    value={cityQuery}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setCityQuery(value);
+                      setAddress({ ...address, city: value });
+                    }}
                     className="mt-1"
+                    placeholder="Начните вводить город"
+                    required
                   />
+                  {cityLoading ? <p className="mt-1 text-xs text-gray-500">Ищем города...</p> : null}
+                  {citySuggestions.length > 0 ? (
+                    <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-56 overflow-auto rounded-2xl border border-gray-200 bg-white shadow-lg">
+                      {citySuggestions.map((suggestion) => (
+                        <button
+                          key={suggestion.value}
+                          type="button"
+                          className="block w-full border-b border-gray-100 px-4 py-3 text-left text-sm last:border-0 hover:bg-gray-50"
+                          onClick={() => {
+                            setCityQuery(suggestion.value);
+                            setAddress({ ...address, city: suggestion.value });
+                            setCitySuggestions([]);
+                          }}
+                        >
+                          <div className="font-medium text-gray-900">{suggestion.value}</div>
+                          {suggestion.region ? <div className="mt-1 text-xs text-gray-500">{suggestion.region}</div> : null}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 <div>
-                  <Label htmlFor="postalCode">Почтовый индекс</Label>
+                  <Label htmlFor="postalCode">Индекс</Label>
                   <Input
                     id="postalCode"
-                    required
-                    value={formData.postalCode}
-                    onChange={(e) => setFormData({...formData, postalCode: e.target.value})}
+                    value={address.postalCode}
+                    onChange={(e) => setAddress({ ...address, postalCode: e.target.value })}
                     className="mt-1"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label htmlFor="country">Страна</Label>
-                  <Input
-                    id="country"
+                    placeholder="101000"
                     required
-                    value={formData.country}
-                    onChange={(e) => setFormData({...formData, country: e.target.value})}
-                    className="mt-1"
                   />
                 </div>
               </div>
-            </motion.div>
+              <div>
+                <Label htmlFor="country">Страна</Label>
+                <Select
+                  value={address.country}
+                  onValueChange={(value) => setAddress({ ...address, country: value })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Выберите страну" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COUNTRY_OPTIONS.map((option) => (
+                      <SelectItem key={option.code} value={option.label}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Payment Method */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-white rounded-xl p-6 shadow-sm border border-gray-200"
-            >
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <CreditCard className="w-5 h-5 mr-2 text-[#2A7F6E]" />
-                Способ оплаты
-              </h3>
-              
-              <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                <div className="flex items-center space-x-2 p-3 border rounded-lg mb-2 cursor-pointer hover:bg-gray-50">
-                  <RadioGroupItem value="card" id="card" />
-                  <Label htmlFor="card" className="flex-1 cursor-pointer">Банковская карта</Label>
-                </div>
-                <div className="flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <RadioGroupItem value="cash" id="cash" />
-                  <Label htmlFor="cash" className="flex-1 cursor-pointer">Наличные при получении</Label>
-                </div>
-              </RadioGroup>
-            </motion.div>
+              <Button type="submit" className="w-full bg-[#2A7F6E] text-white hover:bg-[#236b5d]" disabled={loading}>
+                <PackageCheck className="mr-2 h-4 w-4" />
+                {loading ? 'Сохраняем...' : 'Подтвердить заказ'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#2A7F6E] hover:bg-[#236b5d] text-white py-6 text-lg"
-            >
-              {loading ? 'Оформление...' : 'Подтвердить заказ'}
-            </Button>
-          </form>
-        </div>
-
-        {/* Order Summary */}
-        <div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 sticky top-24">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Ваш заказ</h3>
-            
-            <div className="space-y-3 mb-4">
-              {cart.map((item) => (
-                <div key={item.productId} className="flex justify-between text-sm">
-                  <span className="text-gray-600">{item.product.name} x{item.quantity}</span>
-                  <span className="font-medium">${(item.product.price * item.quantity).toFixed(2)}</span>
-                </div>
-              ))}
+        <Card>
+          <CardContent className="space-y-5 p-6">
+            <div className="flex items-center gap-2 text-gray-900">
+              <CreditCard className="h-5 w-5 text-[#2A7F6E]" />
+              <h2 className="text-lg font-semibold">Сводка заказа</h2>
             </div>
 
-            <div className="border-t border-gray-200 pt-4 space-y-2">
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Подытог</span>
-                <span>${subtotal.toFixed(2)}</span>
+            <div className="space-y-3 rounded-2xl bg-gray-50 p-4 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">ID заказа</span>
+                <span className="font-medium">{order.id}</span>
               </div>
-              {appliedBonuses > 0 && (
-                <div className="flex justify-between text-sm text-[#C5A059]">
-                  <span>Бонусы</span>
-                  <span>-${appliedBonuses}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-lg font-semibold text-gray-900 pt-2 border-t border-gray-200">
-                <span>Итого</span>
-                <span>${finalAmount.toFixed(2)}</span>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Семейство</span>
+                <span className="font-medium">{order.familyName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Вариант</span>
+                <span className="font-medium">{order.variantLabel}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Сумма</span>
+                <span className="font-semibold text-gray-900">{formatRuble(order.totalAmount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Списано из wallet</span>
+                <span className="font-semibold text-gray-900">{formatRuble(order.walletDeduction)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Статус</span>
+                <span className="font-semibold text-gray-900">{order.status}</span>
               </div>
             </div>
-          </div>
-        </div>
+
+            <div className="rounded-2xl border border-[#2A7F6E]/20 bg-[#2A7F6E]/5 p-4 text-sm text-[#17493f]">
+              Оплата на слот была проведена раньше. Эта страница фиксирует доставку и переводит заказ в финальный статус.
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

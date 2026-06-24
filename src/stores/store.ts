@@ -17,10 +17,21 @@ export interface Product {
   slug: string;
   description: string;
   basePrice: number;
+  price?: number;
+  originalPrice?: number;
   discountPrice: number | null;
   images: string[];
   category: string;
   categorySlug: string;
+  landedCost?: number;
+  packagingCost?: number;
+  fulfillmentCost?: number;
+  platformFeePercent?: number;
+  paymentFeePercent?: number;
+  taxReservePercent?: number;
+  marginTargetPercent?: number;
+  currency?: 'RUB' | 'AED' | 'USD';
+  archivedAt?: string;
   rating: number;
   reviewsCount: number;
   inStock: boolean;
@@ -33,8 +44,11 @@ export interface Product {
 }
 
 export interface CartItem {
+  id: string;
   product: Product;
   quantity: number;
+  selectedSizeId?: string;
+  selectedSizeLabel?: string;
 }
 
 export interface Session {
@@ -122,9 +136,9 @@ interface AppState {
   login: (user: User) => void;
   logout: () => void;
   cart: CartItem[];
-  addToCart: (product: Product, quantity?: number) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  addToCart: (product: Product, quantity?: number, options?: { selectedSizeId?: string; selectedSizeLabel?: string }) => void;
+  removeFromCart: (cartItemId: string) => void;
+  updateQuantity: (cartItemId: string, quantity: number) => void;
   clearCart: () => void;
   getCartTotal: () => number;
   getCartCount: () => number;
@@ -156,32 +170,53 @@ export const useStore = create<AppState>()(
       login: (user) => set({ user, isAuthenticated: true }),
       logout: () => set({ user: null, isAuthenticated: false }),
       cart: [],
-      addToCart: (product, quantity = 1) => {
+      addToCart: (product, quantity = 1, options) => {
         const { cart } = get();
-        const existingItem = cart.find((item) => item.product.id === product.id);
+        const selectedSizeId = options?.selectedSizeId?.trim();
+        const selectedSizeLabel = options?.selectedSizeLabel?.trim();
+        const cartItemId = `${product.id}__${selectedSizeId || 'default'}`;
+        const resolveCartItemId = (item: CartItem) => item.id || `${item.product.id}__${item.selectedSizeId || 'default'}`;
+        const existingItem = cart.find((item) => resolveCartItemId(item) === cartItemId);
         if (existingItem) {
           set({
             cart: cart.map((item) =>
-              item.product.id === product.id
+              resolveCartItemId(item) === cartItemId
                 ? { ...item, quantity: item.quantity + quantity }
                 : item
             ),
           });
         } else {
-          set({ cart: [...cart, { product, quantity }] });
+          set({
+            cart: [
+              ...cart,
+              {
+                id: cartItemId,
+                product,
+                quantity,
+                selectedSizeId,
+                selectedSizeLabel,
+              },
+            ],
+          });
         }
       },
-      removeFromCart: (productId) => {
-        set({ cart: get().cart.filter((item) => item.product.id !== productId) });
+      removeFromCart: (cartItemId) => {
+        set({
+          cart: get().cart.filter(
+            (item) => (item.id || `${item.product.id}__${item.selectedSizeId || 'default'}`) !== cartItemId,
+          ),
+        });
       },
-      updateQuantity: (productId, quantity) => {
+      updateQuantity: (cartItemId, quantity) => {
         if (quantity <= 0) {
-          get().removeFromCart(productId);
+          get().removeFromCart(cartItemId);
           return;
         }
         set({
           cart: get().cart.map((item) =>
-            item.product.id === productId ? { ...item, quantity } : item
+            (item.id || `${item.product.id}__${item.selectedSizeId || 'default'}`) === cartItemId
+              ? { ...item, quantity }
+              : item
           ),
         });
       },

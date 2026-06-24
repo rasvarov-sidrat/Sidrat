@@ -3,6 +3,7 @@ import { Users, Clock, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { GB2Session } from '@/types';
 import { Button } from '@/components/ui/button';
+import { getProductCoverImage } from '@/lib/mvp';
 
 interface SessionCardProps {
   session: GB2Session;
@@ -19,7 +20,7 @@ export default function SessionCard({ session }: SessionCardProps) {
     >
       <div className="relative h-48 overflow-hidden">
         <img
-          src={session.product.image}
+          src={getProductCoverImage(session.product)}
           alt={session.product.name}
           className="w-full h-full object-cover"
         />

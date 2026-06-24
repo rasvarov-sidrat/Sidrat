@@ -38,14 +38,22 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({
       {hasDiscount ? (
         <div className="flex flex-col">
           <div className="flex items-baseline gap-2 flex-wrap">
-            <span className={`${sizeClasses[size].discounted} font-bold text-green-700`}>{formatPrice(displayDiscounted || 0)}</span>
+            <span className={`${sizeClasses[size].discounted} font-bold text-[#17493f]`}>
+              {formatPrice(displayDiscounted ?? displayOriginal)}
+            </span>
             <span className={`${sizeClasses[size].original} text-gray-400 line-through`}>{formatPrice(displayOriginal)}</span>
-            <Badge variant="destructive" className="text-xs">-{discountPercent}%</Badge>
+            <Badge className="rounded-full bg-[#C5A059]/15 text-[#8b6a2f] hover:bg-[#C5A059]/15 text-xs">
+              -{discountPercent}%
+            </Badge>
           </div>
-          {savings > 0 && !showPerUnit && <span className={`${sizeClasses[size].savings} text-green-600 mt-0.5`}>Экономия: {formatPrice(savings)}</span>}
+          {savings > 0 && !showPerUnit ? (
+            <span className={`${sizeClasses[size].savings} mt-0.5 text-[#2A7F6E]`}>
+              Экономия: {formatPrice(savings)}
+            </span>
+          ) : null}
         </div>
       ) : (
-        <span className={`${sizeClasses[size].discounted} font-bold`}>{formatPrice(displayOriginal)}</span>
+        <span className={`${sizeClasses[size].discounted} font-bold text-[#17493f]`}>{formatPrice(displayOriginal)}</span>
       )}
     </div>
   );

@@ -1,113 +1,114 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Gift, ArrowUpRight, ArrowDownRight, Wallet } from 'lucide-react';
-import { User, BonusTransaction } from '@/types';
+import { useMemo, useState } from 'react';
+import { ArrowDownLeft, ArrowUpRight, Wallet } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/use-toast';
+import { createWithdrawalRequest, formatRuble, getUserWalletTransactions, getUserWithdrawals } from '@/lib/mvp';
+import type { User } from '@/types';
 
-interface BonusProps {
+interface WalletProps {
   user: User;
 }
 
-export default function Bonus({ user }: BonusProps) {
-  const [transactions, setTransactions] = useState<BonusTransaction[]>([]);
-  const [stats, setStats] = useState({ earned: 0, spent: 0 });
+export default function WalletPage({ user }: WalletProps) {
+  const { toast } = useToast();
+  const transactions = useMemo(() => getUserWalletTransactions(user.id), [user.id]);
+  const withdrawals = useMemo(() => getUserWithdrawals(user.id), [user.id]);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
 
-  useEffect(() => {
-    const all = JSON.parse(localStorage.getItem('bonusTransactions') || '[]');
-    const userTrans = all.filter((t: BonusTransaction) => t.userId === user.id);
-    setTransactions(userTrans);
-    
-    const earned = userTrans.filter((t: BonusTransaction) => t.type === 'earned').reduce((sum: number, t: BonusTransaction) => sum + t.amount, 0);
-    const spent = userTrans.filter((t: BonusTransaction) => t.type === 'spent').reduce((sum: number, t: BonusTransaction) => sum + t.amount, 0);
-    setStats({ earned, spent });
-  }, [user.id]);
+  const handleWithdraw = () => {
+    try {
+      const amount = Number(withdrawAmount);
+      const request = createWithdrawalRequest({ user, amount });
+      toast({
+        title: 'Заявка создана',
+        description: `Комиссия ${formatRuble(request.feeAmount)} · к выдаче ${formatRuble(request.netAmount)}`,
+      });
+      setWithdrawAmount('');
+      window.location.reload();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Не удалось создать заявку';
+      toast({ title: 'Ошибка', description: message, variant: 'destructive' });
+    }
+  };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Бонусный кошелёк</h1>
-
-      {/* Balance Card */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-gradient-to-br from-[#C5A059] to-[#b08d4b] rounded-2xl p-8 text-white"
-      >
-        <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="rounded-3xl bg-gradient-to-br from-[#2A7F6E] to-[#17493f] p-8 text-white">
+        <div className="flex items-center gap-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/15">
+            <Wallet className="h-8 w-8" />
+          </div>
           <div>
-            <p className="text-white/80 text-lg mb-2">Текущий баланс</p>
-            <p className="text-5xl font-bold">{user.bonusBalance}</p>
-            <p className="text-white/60 text-sm mt-2">1 бонус = $1</p>
-          </div>
-          <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
-            <Wallet className="w-10 h-10" />
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Всего начислено</p>
-              <p className="text-2xl font-bold text-green-600">{stats.earned}</p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-              <ArrowUpRight className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Всего списано</p>
-              <p className="text-2xl font-bold text-red-600">{stats.spent}</p>
-            </div>
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-              <ArrowDownRight className="w-6 h-6 text-red-600" />
-            </div>
+            <p className="text-sm text-white/70">Текущий баланс кошелька</p>
+            <h1 className="text-4xl font-bold">{formatRuble(user.walletBalance || 0)}</h1>
           </div>
         </div>
       </div>
 
-      {/* Transactions */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">История операций</h3>
-        </div>
-        {transactions.length > 0 ? (
-          <div className="divide-y divide-gray-200">
-            {transactions.map((t) => (
-              <div key={t.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
-                <div className="flex items-center">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 ${
-                    t.type === 'earned' ? 'bg-green-100' : 'bg-red-100'
-                  }`}>
-                    {t.type === 'earned' ? (
-                      <Gift className={`w-5 h-5 text-green-600`} />
-                    ) : (
-                      <ArrowDownRight className={`w-5 h-5 text-red-600`} />
-                    )}
-                  </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2">
+              <ArrowUpRight className="h-5 w-5 text-green-600" />
+              <p className="text-sm text-gray-500">Накоплено операций</p>
+            </div>
+            <p className="mt-2 text-2xl font-bold text-gray-900">{transactions.filter((item) => item.type === 'credit').length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2">
+              <ArrowDownLeft className="h-5 w-5 text-red-600" />
+              <p className="text-sm text-gray-500">Заявок на вывод</p>
+            </div>
+            <p className="mt-2 text-2xl font-bold text-gray-900">{withdrawals.length}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardContent className="space-y-4 p-6">
+          <h2 className="text-lg font-semibold text-gray-900">Вывод средств</h2>
+          <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+            <div>
+              <Label htmlFor="withdraw">Сумма</Label>
+              <Input id="withdraw" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} className="mt-1" placeholder="1000" />
+            </div>
+            <div className="flex items-end">
+              <Button onClick={handleWithdraw} className="bg-[#2A7F6E] text-white hover:bg-[#236b5d]">
+                Создать заявку
+              </Button>
+            </div>
+          </div>
+          <p className="text-sm text-gray-500">Комиссия на вывод удерживается из суммы заявки. Деньги можно оставить в системе и потратить на другие товары.</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-6">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900">История кошелька</h2>
+          <div className="space-y-3">
+            {transactions.length > 0 ? (
+              transactions.map((tx) => (
+                <div key={tx.id} className="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
                   <div>
-                    <p className="font-medium text-gray-900">{t.description}</p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(t.createdAt).toLocaleDateString()} • {new Date(t.createdAt).toLocaleTimeString()}
-                    </p>
+                    <p className="font-medium text-gray-900">{tx.description}</p>
+                    <p className="text-sm text-gray-500">{new Date(tx.createdAt).toLocaleString()}</p>
                   </div>
+                  <span className={`font-semibold ${tx.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
+                    {tx.type === 'credit' ? '+' : '-'}{formatRuble(tx.amount)}
+                  </span>
                 </div>
-                <span className={`font-bold text-lg ${t.type === 'earned' ? 'text-green-600' : 'text-red-600'}`}>
-                  {t.type === 'earned' ? '+' : '-'}{t.amount}
-                </span>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-gray-500">Пока нет операций.</p>
+            )}
           </div>
-        ) : (
-          <div className="text-center py-12">
-            <Gift className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500">История операций пуста</p>
-          </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

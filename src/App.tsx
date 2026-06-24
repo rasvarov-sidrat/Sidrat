@@ -1,106 +1,101 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
-import { I18nProvider } from '@/i18n/I18nProvider';
-
-// Layouts
 import MainLayout from '@/layouts/MainLayout';
 import AuthLayout from '@/layouts/AuthLayout';
+import type { User } from '@/types';
+import { getCurrentUser, seedMvpData, setCurrentUser } from '@/lib/mvp';
 
-// Pages
-import Home from '@/pages/Home';
-import Catalog from '@/pages/Catalog';
-import ProductDetail from '@/pages/ProductDetail';
-import Cart from '@/pages/Cart';
-import Checkout from '@/pages/Checkout';
-import OrderSuccess from '@/pages/OrderSuccess';
-import Login from '@/pages/Login';
-import Register from '@/pages/Register';
-import Profile from '@/pages/Profile';
-import Bonus from '@/pages/Bonus';
-import Sessions from '@/pages/Sessions';
-import CreateSession from '@/pages/CreateSession';
-import SessionDetail from '@/pages/SessionDetail';
-import NotFound from '@/pages/NotFound';
+const Home = lazy(() => import('@/pages/Home'));
+const Catalog = lazy(() => import('@/pages/Catalog'));
+const ProductDetail = lazy(() => import('@/pages/ProductDetail'));
+const Sessions = lazy(() => import('@/pages/Sessions'));
+const SessionDetail = lazy(() => import('@/pages/SessionDetail'));
+const CreateSession = lazy(() => import('@/pages/CreateSession'));
+const Cart = lazy(() => import('@/pages/Cart'));
+const Checkout = lazy(() => import('@/pages/Checkout'));
+const OrderSuccess = lazy(() => import('@/pages/OrderSuccess'));
+const Login = lazy(() => import('@/pages/Login'));
+const Register = lazy(() => import('@/pages/Register'));
+const Profile = lazy(() => import('@/pages/Profile'));
+const Wallet = lazy(() => import('@/pages/Bonus'));
+const SellerDashboard = lazy(() => import('@/pages/SellerDashboard'));
+const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard'));
+const NotFound = lazy(() => import('@/pages/NotFound'));
 
-// Types
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: 'buyer' | 'seller' | 'admin';
-  bonusBalance: number;
-  referralCode: string;
-  referredBy?: string;
+function CheckoutRoute({ user }: { user: User | null }) {
+  const location = useLocation();
+  if (!user) {
+    return <Navigate to="/register" replace state={{ from: location }} />;
+  }
+  return <Checkout user={user} />;
+}
+
+function PageFallback() {
+  return <div className="min-h-[60vh] rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500">Загрузка...</div>;
 }
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    seedMvpData();
+    setUser(getCurrentUser());
+    setReady(true);
+
+    const handleUserUpdate = () => setUser(getCurrentUser());
+    window.addEventListener('sidrat-user-updated', handleUserUpdate);
+    return () => window.removeEventListener('sidrat-user-updated', handleUserUpdate);
   }, []);
 
-  const handleLogin = (userData: User) => {
-    setUser(userData);
-    localStorage.setItem('currentUser', JSON.stringify(userData));
+  const handleLogin = (nextUser: User) => {
+    setUser(nextUser);
+    setCurrentUser(nextUser);
   };
 
   const handleLogout = () => {
     setUser(null);
-    localStorage.removeItem('currentUser');
+    setCurrentUser(null);
   };
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  if (!ready) {
+    return <div className="min-h-screen flex items-center justify-center">Загрузка...</div>;
   }
 
   return (
-    <I18nProvider>
-      <Router>
-        <AnimatePresence mode="wait">
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<MainLayout user={user} onLogout={handleLogout} />}>
-              <Route index element={<Home />} />
-              <Route path="catalog" element={<Catalog />} />
-              <Route path="product/:slug" element={<ProductDetail user={user} />} />
-              <Route path="cart" element={<Cart user={user} />} />
-              <Route path="sessions" element={<Sessions user={user} />} />
-              <Route path="session/:id" element={<SessionDetail user={user} />} />
-              <Route path="create-session/:productId" element={
-                user ? <CreateSession user={user} /> : <Navigate to="/login" replace />
-              } />
-              <Route path="order-success/:orderId" element={<OrderSuccess />} />
-              <Route path="bonus" element={user ? <Bonus user={user} /> : <Navigate to="/login" replace />} />
-              <Route path="profile" element={
-                user ? <Profile user={user} onUpdate={setUser} /> : <Navigate to="/login" replace />
-              } />
-            </Route>
+    <Router>
+      <Suspense fallback={<PageFallback />}>
+        <Routes>
+          <Route path="/" element={<MainLayout user={user} onLogout={handleLogout} />}>
+            <Route index element={<Home />} />
+            <Route path="catalog" element={<Catalog />} />
+            <Route path="product/:slug" element={<ProductDetail user={user} />} />
+            <Route path="sessions" element={<Sessions user={user} />} />
+            <Route path="session/:id" element={<SessionDetail user={user} />} />
+            <Route path="cart" element={<Cart user={user} />} />
+            <Route
+              path="session/create/:familyId"
+              element={user ? <CreateSession user={user} /> : <Navigate to="/login" replace />}
+            />
+            <Route path="checkout/:orderId" element={<CheckoutRoute user={user} />} />
+            <Route path="order-success/:orderId" element={<OrderSuccess />} />
+            <Route path="wallet" element={user ? <Wallet user={user} /> : <Navigate to="/login" replace />} />
+            <Route path="profile" element={user ? <Profile user={user} onUpdate={handleLogin} /> : <Navigate to="/login" replace />} />
+            <Route path="seller" element={user ? <SellerDashboard user={user} /> : <Navigate to="/login" replace />} />
+            <Route path="admin" element={user ? <AdminDashboard user={user} /> : <Navigate to="/login" replace />} />
+          </Route>
 
-            {/* Auth Routes */}
-            <Route element={<AuthLayout />}>
-              <Route path="login" element={
-                user ? <Navigate to="/" replace /> : <Login onLogin={handleLogin} />
-              } />
-              <Route path="register" element={
-                user ? <Navigate to="/" replace /> : <Register onRegister={handleLogin} />
-              } />
-            </Route>
+          <Route element={<AuthLayout />}>
+            <Route path="login" element={user ? <Navigate to="/" replace /> : <Login onLogin={handleLogin} />} />
+            <Route path="register" element={user ? <Navigate to="/" replace /> : <Register onRegister={handleLogin} />} />
+          </Route>
 
-            {/* 404 */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AnimatePresence>
-        <Toaster />
-      </Router>
-    </I18nProvider>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+      <Toaster />
+    </Router>
   );
 }
 

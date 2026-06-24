@@ -1,177 +1,129 @@
-import { useState } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
+import { type FormEvent, useMemo, useState } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { Mail, UserRound, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { User as UserType } from '@/types';
+import { findUserByReferralCode, loadUsers, saveUsers, setCurrentUser } from '@/lib/mvp';
+import type { User } from '@/types';
 
 interface RegisterProps {
-  onRegister: (user: UserType) => void;
+  onRegister: (user: User) => void;
 }
 
 export default function Register({ onRegister }: RegisterProps) {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { toast } = useToast();
-  const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-  });
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const from = location.state?.from?.pathname || '/';
+  const referralCode = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return (params.get('ref') || params.get('referral') || '').trim();
+  }, [location.search]);
+  const referrer = useMemo(() => (referralCode ? findUserByReferralCode(referralCode) : null), [referralCode]);
 
-  const refCode = searchParams.get('ref');
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (formData.password !== formData.confirmPassword) {
-      toast({ title: "Ошибка", description: "Пароли не совпадают", variant: "destructive" });
+    const users = loadUsers();
+    if (users.some((item) => item.email.toLowerCase() === email.toLowerCase())) {
+      toast({ title: 'Ошибка', description: 'Пользователь уже существует', variant: 'destructive' });
       return;
     }
 
-    const users = JSON.parse(localStorage.getItem('demoUsers') || '[]');
-    
-    if (users.some((u: UserType) => u.email === formData.email)) {
-      toast({ title: "Ошибка", description: "Пользователь с таким email уже существует", variant: "destructive" });
+    if (password.trim().length < 3) {
+      toast({ title: 'Ошибка', description: 'Пароль должен быть не короче 3 символов', variant: 'destructive' });
       return;
     }
 
-    const newUser: UserType = {
+    if (password !== confirmPassword) {
+      toast({ title: 'Ошибка', description: 'Пароли не совпадают', variant: 'destructive' });
+      return;
+    }
+
+    const nextUser: User = {
       id: `user-${Date.now()}`,
-      email: formData.email,
-      name: formData.name,
+      email,
+      name,
       role: 'buyer',
-      bonusBalance: refCode ? 100 : 0, // Welcome bonus + referral bonus
-      referralCode: `REF${Date.now().toString(36).toUpperCase()}`,
-      referredBy: refCode || undefined,
+      walletBalance: 0,
+      referralCode: `REF-${Date.now().toString(36).toUpperCase()}`,
+      referredBy: referrer?.referralCode,
       createdAt: new Date().toISOString(),
     };
 
-    users.push(newUser);
-    localStorage.setItem('demoUsers', JSON.stringify(users));
-
-    // Award referrer
-    if (refCode) {
-      const referrerIndex = users.findIndex((u: UserType) => u.referralCode === refCode || u.id === refCode);
-      if (referrerIndex !== -1) {
-        users[referrerIndex].bonusBalance += 500;
-        localStorage.setItem('demoUsers', JSON.stringify(users));
-
-        const transactions = JSON.parse(localStorage.getItem('bonusTransactions') || '[]');
-        transactions.push({
-          id: `trans-${Date.now()}`,
-          userId: users[referrerIndex].id,
-          type: 'earned',
-          amount: 500,
-          description: 'Бонус за приглашение друга',
-          relatedUserId: newUser.id,
-          createdAt: new Date().toISOString(),
-        });
-        localStorage.setItem('bonusTransactions', JSON.stringify(transactions));
-      }
-    }
-
-    onRegister(newUser);
-    toast({ title: "Регистрация успешна!", description: "Добро пожаловать в SIDRAT!" });
-    navigate('/');
+    users.unshift(nextUser);
+    saveUsers(users);
+    setCurrentUser(nextUser);
+    onRegister(nextUser);
+    toast({ title: 'Регистрация успешна', description: 'Добро пожаловать в SIDRAT' });
+    navigate(from, { replace: true });
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
-      <h2 className="text-2xl font-bold text-center text-gray-900 mb-6">Создать аккаунт</h2>
-      
-      {refCode && (
-        <div className="mb-4 p-3 bg-[#2A7F6E]/10 rounded-lg text-center text-sm text-[#2A7F6E]">
-          Вы пришли по реферальной ссылке! Получите 100 бонусов при регистрации!
+    <div>
+      <h2 className="text-2xl font-bold text-gray-900">Регистрация</h2>
+      <p className="mt-2 text-sm text-gray-600">Новый аккаунт создаёт buyer-роль по умолчанию.</p>
+      {referrer ? (
+        <div className="mt-4 rounded-2xl border border-[#2A7F6E]/15 bg-[#2A7F6E]/5 p-4 text-sm text-[#17493f]">
+          Вы пришли по приглашению <span className="font-medium">{referrer.name}</span>. После подтверждённых покупок этот пользователь будет получать 1% reward.
         </div>
-      )}
+      ) : referralCode ? (
+        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Код приглашения не найден, регистрация пройдёт без referral.
+        </div>
+      ) : null}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div>
           <Label htmlFor="name">Имя</Label>
           <div className="relative mt-1">
-            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              id="name"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              className="pl-10"
-              placeholder="Иван Иванов"
-            />
+            <UserRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="pl-10" placeholder="Иван Иванов" />
           </div>
         </div>
-
         <div>
           <Label htmlFor="email">Email</Label>
           <div className="relative mt-1">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              id="email"
-              type="email"
-              required
-              value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
-              className="pl-10"
-              placeholder="ivan@example.com"
-            />
+            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" placeholder="ivan@sidrat.local" />
           </div>
         </div>
-
         <div>
           <Label htmlFor="password">Пароль</Label>
           <div className="relative mt-1">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" placeholder="любая строка" />
+          </div>
+        </div>
+        <div>
+          <Label htmlFor="confirmPassword">Подтвердите пароль</Label>
+          <div className="relative mt-1">
+            <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              required
-              value={formData.password}
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
-              className="pl-10 pr-10"
-              placeholder="••••••"
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="pl-10"
+              placeholder="повторите пароль"
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
           </div>
         </div>
 
-        <div>
-          <Label htmlFor="confirmPassword">Подтвердите пароль</Label>
-          <Input
-            id="confirmPassword"
-            type="password"
-            required
-            value={formData.confirmPassword}
-            onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-            placeholder="••••••"
-          />
-        </div>
-
-        <Button type="submit" className="w-full bg-[#2A7F6E] hover:bg-[#236b5d] text-white">
-          Зарегистрироваться
+        <Button type="submit" className="w-full bg-[#2A7F6E] text-white hover:bg-[#236b5d]">
+          Создать аккаунт
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-600">
-        Уже есть аккаунт?{' '}
-        <Link to="/login" className="text-[#2A7F6E] hover:underline font-medium">
-          Войти
-        </Link>
+      <p className="mt-6 text-sm text-gray-600">
+        Уже есть аккаунт? <Link to="/login" className="font-medium text-[#2A7F6E] hover:underline">Войти</Link>
       </p>
-    </motion.div>
+    </div>
   );
 }
