@@ -130,6 +130,22 @@ const currencyRates: Record<string, { rate: number; symbol: string }> = {
   USD: { rate: 0.011, symbol: '$' },
 };
 
+const APP_STATE_VERSION = 2;
+
+type PersistedAppState = Pick<
+  AppState,
+  'user' | 'isAuthenticated' | 'cart' | 'language' | 'currency' | 'gb2Sessions'
+>;
+
+const defaultPersistedState: PersistedAppState = {
+  user: null,
+  isAuthenticated: false,
+  cart: [],
+  language: 'ru',
+  currency: 'RUB',
+  gb2Sessions: [],
+};
+
 interface AppState {
   user: User | null;
   isAuthenticated: boolean;
@@ -299,6 +315,23 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'sidrat-storage',
+      version: APP_STATE_VERSION,
+      migrate: (persistedState, version) => {
+        if (version !== APP_STATE_VERSION || !persistedState || typeof persistedState !== 'object') {
+          return defaultPersistedState;
+        }
+
+        const state = persistedState as Partial<PersistedAppState>;
+        return {
+          ...defaultPersistedState,
+          user: state.user ?? null,
+          isAuthenticated: state.isAuthenticated ?? false,
+          cart: Array.isArray(state.cart) ? state.cart : [],
+          language: state.language === 'en' || state.language === 'ar' ? state.language : 'ru',
+          currency: state.currency === 'AED' || state.currency === 'USD' ? state.currency : 'RUB',
+          gb2Sessions: Array.isArray(state.gb2Sessions) ? state.gb2Sessions : [],
+        };
+      },
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,

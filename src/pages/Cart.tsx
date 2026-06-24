@@ -60,7 +60,7 @@ export default function Cart({ user }: CartProps) {
             slug: item.product.slug,
             basePrice: item.product.basePrice,
             discountPrice: item.product.discountPrice,
-            images: getProductImages(item.product),
+              images: getProductImages(item.product),
             sellerId: item.product.sellerId,
             categorySlug: item.product.categorySlug,
             variantLabel: item.selectedSizeLabel,
@@ -107,7 +107,7 @@ export default function Cart({ user }: CartProps) {
                   className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 flex gap-4"
                 >
                   <img
-                        src={getProductCoverImage(item.product)}
+                    src={getProductCoverImage(item.product)}
                     alt={item.product.name}
                     className="w-24 h-24 object-cover rounded-lg"
                   />

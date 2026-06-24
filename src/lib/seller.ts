@@ -1,14 +1,5 @@
 import { buildCatalogProductSlug, catalogCategories, getCatalogCategorySearchText, getCatalogGroup, slugifyCatalogSegment } from '@/lib/catalog';
-import {
-  DEFAULT_PRODUCT_IMAGE,
-  getFamilyActiveSessions,
-  getSessionFillPercent,
-  loadOrders,
-  loadProducts,
-  loadSessions,
-  loadWalletTransactions,
-  saveProducts,
-} from '@/lib/mvp';
+import { DEFAULT_PRODUCT_IMAGE, getFamilyActiveSessions, getProductCoverImage, getProductImages, getSessionFillPercent, loadOrders, loadProducts, loadSessions, loadWalletTransactions, saveProducts } from '@/lib/mvp';
 import {
   getLegacyShoeSizesFromIds,
   getShoeSizeIdsFromLegacySizes,
@@ -229,8 +220,8 @@ export function draftFromProduct(product: Product): SellerProductDraft {
     category,
     catalogSectionSlug,
     catalogItemSlug,
-    image: product.image || '',
-    images: product.images.filter(Boolean),
+    image: getProductCoverImage(product),
+    images: getProductImages(product),
     basePrice: product.basePrice,
     originalPrice: product.originalPrice ?? Math.max(product.basePrice, Math.round(product.basePrice * 1.15)),
     discountStep: product.discountStep,
@@ -257,7 +248,7 @@ export function draftFromProduct(product: Product): SellerProductDraft {
       color: variant.color,
       sku: variant.sku || '',
       stock: variant.stock,
-      image: variant.image || product.image || DEFAULT_PRODUCT_IMAGE,
+      image: variant.image || getProductCoverImage(product),
       isAllowedInGb: variant.isAllowedInGb ?? true,
     })),
   };

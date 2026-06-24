@@ -7,15 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PriceDisplay } from '@/components/PriceDisplay';
 import { ProgressBar } from '@/components/ProgressBar';
-import {
-  findProductFamily,
-  getFamilyActiveSessions,
-  getProductCoverImage,
-  getProductImages,
-  getSessionFillPercent,
-  getSessionPriceTable,
-  formatRuble,
-} from '@/lib/mvp';
+import { findProductFamily, getFamilyActiveSessions, getProductCoverImage, getProductImages, getSessionFillPercent, getSessionPriceTable, formatRuble } from '@/lib/mvp';
 import { formatShoeSizeLabel, getProductShoeSizes, isFootwearCategory } from '@/lib/shoe-sizes';
 import type { User } from '@/types';
 import { useStore } from '@/stores/store';

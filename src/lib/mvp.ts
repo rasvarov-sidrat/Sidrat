@@ -22,6 +22,12 @@ const STORAGE_KEYS = {
   currentUser: 'currentUser',
 } as const;
 
+const STORAGE_SCHEMA_VERSION_KEY = 'sidrat_storage_schema_version';
+const STORAGE_SCHEMA_VERSION = 2;
+const DEMO_SEED_ISO = '2026-06-24T00:00:00.000Z';
+const DEMO_SEED_DATE = new Date(DEMO_SEED_ISO);
+const DEMO_SEED_FUTURE_ISO = new Date(DEMO_SEED_DATE.getTime() + 72 * 60 * 60 * 1000).toISOString();
+
 const DEFAULT_WITHDRAWAL_FEE_RATE = 0.05;
 
 function safeParse<T>(value: string | null, fallback: T): T {
@@ -43,6 +49,14 @@ function writeStorage<T>(key: string, value: T) {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function demoIso() {
+  return DEMO_SEED_ISO;
+}
+
+function demoFutureIso() {
+  return DEMO_SEED_FUTURE_ISO;
 }
 
 function id(prefix: string) {
@@ -80,6 +94,27 @@ export function getProductImages(product: Pick<Product, 'image' | 'images'>) {
 
 export function getProductCoverImage(product: Pick<Product, 'image' | 'images'>) {
   return getProductImages(product)[0] || DEFAULT_PRODUCT_IMAGE;
+}
+
+function getStorageSchemaVersion() {
+  return localStorage.getItem(STORAGE_SCHEMA_VERSION_KEY);
+}
+
+function setStorageSchemaVersion() {
+  localStorage.setItem(STORAGE_SCHEMA_VERSION_KEY, String(STORAGE_SCHEMA_VERSION));
+}
+
+function clearAppStorage() {
+  [
+    STORAGE_KEYS.users,
+    STORAGE_KEYS.products,
+    STORAGE_KEYS.sessions,
+    STORAGE_KEYS.orders,
+    STORAGE_KEYS.walletTransactions,
+    STORAGE_KEYS.withdrawals,
+    STORAGE_KEYS.currentUser,
+    'sidrat-storage',
+  ].forEach((key) => localStorage.removeItem(key));
 }
 
 export class MvpError extends Error {
@@ -120,7 +155,7 @@ export const demoUsers: User[] = [
     role: 'buyer',
     walletBalance: 1200,
     referralCode: 'BUYER1',
-    createdAt: nowIso(),
+    createdAt: demoIso(),
   },
   {
     id: 'seller-demo',
@@ -129,7 +164,7 @@ export const demoUsers: User[] = [
     role: 'seller',
     walletBalance: 300,
     referralCode: 'SELLER1',
-    createdAt: nowIso(),
+    createdAt: demoIso(),
   },
   {
     id: 'admin-demo',
@@ -138,7 +173,7 @@ export const demoUsers: User[] = [
     role: 'admin',
     walletBalance: 0,
     referralCode: 'ADMIN1',
-    createdAt: nowIso(),
+    createdAt: demoIso(),
   },
 ];
 
@@ -471,8 +506,8 @@ const demoOrders: Order[] = [
     totalAmount: 1321,
     walletDeduction: 0,
     status: 'confirmed',
-    createdAt: nowIso(),
-    fulfilledAt: nowIso(),
+    createdAt: demoIso(),
+    fulfilledAt: demoIso(),
     shippingAddress: {
       fullName: 'Demo Buyer',
       phone: '+7 900 000 00 01',
@@ -493,8 +528,8 @@ const demoOrders: Order[] = [
     totalAmount: 18990,
     walletDeduction: 500,
     status: 'fulfilled',
-    createdAt: nowIso(),
-    fulfilledAt: nowIso(),
+    createdAt: demoIso(),
+    fulfilledAt: demoIso(),
     shippingAddress: {
       fullName: 'Demo Buyer',
       phone: '+7 900 000 00 02',
@@ -515,7 +550,7 @@ const demoOrders: Order[] = [
     totalAmount: 89990,
     walletDeduction: 0,
     status: 'processing',
-    createdAt: nowIso(),
+    createdAt: demoIso(),
     shippingAddress: {
       fullName: 'Demo Buyer',
       phone: '+7 900 000 00 03',
@@ -599,8 +634,17 @@ function mergeSeedOrders(existingOrders: Order[]) {
 }
 
 export function seedMvpData() {
+  if (getStorageSchemaVersion() !== String(STORAGE_SCHEMA_VERSION)) {
+    clearAppStorage();
+    setStorageSchemaVersion();
+  }
+
   if (!localStorage.getItem(STORAGE_KEYS.users)) {
     writeStorage(STORAGE_KEYS.users, demoUsers);
+  }
+  const currentUser = getCurrentUser();
+  if (currentUser && !loadUsers().some((user) => user.id === currentUser.id)) {
+    localStorage.removeItem(STORAGE_KEYS.currentUser);
   }
   const storedProducts = loadProducts();
   if (storedProducts.length === 0) {
@@ -626,8 +670,8 @@ export function seedMvpData() {
       status: 'active',
       targetSlots: 5,
       currentSlots: 2,
-      createdAt: nowIso(),
-      expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+      createdAt: demoIso(),
+      expiresAt: demoFutureIso(),
       allowedSizes: ['41', '42', '43', '44'],
       allowedColors: ['Black', 'White'],
       basePriceSnapshot: 1321,
@@ -648,7 +692,7 @@ export function seedMvpData() {
           slotNumber: 1,
           pricePaid: 1321,
           status: 'paid',
-          createdAt: nowIso(),
+          createdAt: demoIso(),
         },
         {
           id: 'part-2',
@@ -661,7 +705,7 @@ export function seedMvpData() {
           slotNumber: 2,
           pricePaid: 1255,
           status: 'paid',
-          createdAt: nowIso(),
+          createdAt: demoIso(),
         },
       ],
     };

@@ -12,12 +12,12 @@ import {
   findPendingSessionOrder,
   findSession,
   formatRuble,
+  getProductCoverImage,
   getSessionFillPercent,
   getSessionPriceOverview,
   getSessionPriceTable,
   getSessionVariantOptions,
   joinSession,
-  getProductCoverImage,
 } from '@/lib/mvp';
 import type { User } from '@/types';
 
