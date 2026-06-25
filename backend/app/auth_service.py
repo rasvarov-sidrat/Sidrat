@@ -77,8 +77,12 @@ async def request_email_verification(db: AsyncSession, payload: EmailVerificatio
     await db.flush()
     send_email(
         email,
-        "SIDRAT verification code",
-        f"Your SIDRAT verification code is: {code}\n\nIt expires in {get_settings().verification_code_ttl_minutes} minutes.",
+        "Код подтверждения SIDRAT",
+        (
+            f"Ваш код подтверждения: {code}\n\n"
+            f"Код действует {get_settings().verification_code_ttl_minutes} минут.\n"
+            "Если вы не регистрировались на SIDRAT, просто проигнорируйте это письмо."
+        ),
     )
     return challenge
 

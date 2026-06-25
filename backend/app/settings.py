@@ -45,6 +45,24 @@ class Settings(BaseSettings):
     gunicorn_workers: int = 2
     log_level: str = "INFO"
 
+    @field_validator("smtp_password", mode="before")
+    @classmethod
+    def normalize_smtp_password(cls, value):
+        if isinstance(value, str):
+            return value.replace(" ", "")
+        return value
+
+    @field_validator("database_url", "read_database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value):
+        if not isinstance(value, str) or not value:
+            return value
+        if value.startswith("postgres://"):
+            return value.replace("postgres://", "postgresql+asyncpg://", 1)
+        if value.startswith("postgresql://"):
+            return value.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return value
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, value):
