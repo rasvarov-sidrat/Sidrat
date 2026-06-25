@@ -5,6 +5,7 @@ import MainLayout from '@/layouts/MainLayout';
 import AuthLayout from '@/layouts/AuthLayout';
 import type { User } from '@/types';
 import { getCurrentUser, seedMvpData, setCurrentUser } from '@/lib/mvp';
+import { clearAuthSession, isVerifiedUser } from '@/lib/auth';
 
 const Home = lazy(() => import('@/pages/Home'));
 const Catalog = lazy(() => import('@/pages/Catalog'));
@@ -21,14 +22,26 @@ const Profile = lazy(() => import('@/pages/Profile'));
 const Wallet = lazy(() => import('@/pages/Bonus'));
 const SellerDashboard = lazy(() => import('@/pages/SellerDashboard'));
 const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard'));
+const SellerApplication = lazy(() => import('@/pages/SellerApplication'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 function CheckoutRoute({ user }: { user: User | null }) {
   const location = useLocation();
-  if (!user) {
+  if (!user || !isVerifiedUser(user)) {
     return <Navigate to="/register" replace state={{ from: location }} />;
   }
   return <Checkout user={user} />;
+}
+
+function CreateSessionRoute({ user }: { user: User | null }) {
+  const location = useLocation();
+  if (!user) {
+    return <Navigate to="/register" replace state={{ from: location }} />;
+  }
+  if (!isVerifiedUser(user)) {
+    return <Navigate to="/register" replace state={{ from: location }} />;
+  }
+  return <CreateSession user={user} />;
 }
 
 function PageFallback() {
@@ -56,7 +69,7 @@ function App() {
 
   const handleLogout = () => {
     setUser(null);
-    setCurrentUser(null);
+    clearAuthSession();
   };
 
   if (!ready) {
@@ -74,16 +87,14 @@ function App() {
             <Route path="sessions" element={<Sessions user={user} />} />
             <Route path="session/:id" element={<SessionDetail user={user} />} />
             <Route path="cart" element={<Cart user={user} />} />
-            <Route
-              path="session/create/:familyId"
-              element={user ? <CreateSession user={user} /> : <Navigate to="/login" replace />}
-            />
+            <Route path="session/create/:familyId" element={<CreateSessionRoute user={user} />} />
             <Route path="checkout/:orderId" element={<CheckoutRoute user={user} />} />
             <Route path="order-success/:orderId" element={<OrderSuccess />} />
             <Route path="wallet" element={user ? <Wallet user={user} /> : <Navigate to="/login" replace />} />
             <Route path="profile" element={user ? <Profile user={user} onUpdate={handleLogin} /> : <Navigate to="/login" replace />} />
-            <Route path="seller" element={user ? <SellerDashboard user={user} /> : <Navigate to="/login" replace />} />
-            <Route path="admin" element={user ? <AdminDashboard user={user} /> : <Navigate to="/login" replace />} />
+            <Route path="seller" element={user && isVerifiedUser(user) && (user.role === 'seller' || user.role === 'admin') ? <SellerDashboard user={user} /> : <Navigate to="/" replace />} />
+            <Route path="admin" element={user && isVerifiedUser(user) && user.role === 'admin' ? <AdminDashboard user={user} /> : <Navigate to="/" replace />} />
+            <Route path="seller-application" element={<SellerApplication />} />
           </Route>
 
           <Route element={<AuthLayout />}>

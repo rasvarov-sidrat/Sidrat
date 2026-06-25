@@ -4,7 +4,9 @@ import { Clock3, Layers3, Shield, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { createSession, findProductFamily } from '@/lib/mvp';
+import { findProductFamily } from '@/lib/mvp';
+import { apiFetch } from '@/lib/api';
+import { createSession } from '@/lib/mvp';
 import type { User } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -32,26 +34,46 @@ export default function CreateSession({ user }: CreateSessionProps) {
     setter((current) => (current.includes(value) ? current.filter((item) => item !== value) : [...current, value]));
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     try {
-      const session = createSession({
-        familyId: family.id,
-        creator: user,
-        accessType,
-        expiresInHours,
-        allowedSizes: selectedSizes,
-        allowedColors: selectedColors,
-        title: title.trim() || `${family.name} GB-сессия`,
-        description: description.trim() || family.description,
+      const session = await apiFetch<{ id: string }>(`/api/v1/sessions`, {
+        method: 'POST',
+        body: JSON.stringify({
+          familyId: family.slug,
+          accessType,
+          expiresInHours,
+          allowedSizes: selectedSizes,
+          allowedColors: selectedColors,
+          title: title.trim() || `${family.name} GB-сессия`,
+          description: description.trim() || family.description,
+        }),
       });
       toast({
         title: 'Сессия создана',
-        description: `GB-сессия ${session.title} готова к набору слотов.`,
+        description: 'GB-сессия готова к набору слотов.',
       });
-      navigate(`/session/${session.id}`);
+      navigate(`/session/${session.id}`, { state: { session } });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Не удалось создать сессию';
-      toast({ title: 'Ошибка', description: message, variant: 'destructive' });
+      try {
+        const localSession = createSession({
+          familyId: family.id,
+          creator: user,
+          accessType,
+          expiresInHours,
+          allowedSizes: selectedSizes,
+          allowedColors: selectedColors,
+          title: title.trim() || `${family.name} GB-сессия`,
+          description: description.trim() || family.description,
+        });
+        toast({
+          title: 'Сессия создана',
+          description: 'GB-сессия готова к набору слотов.',
+        });
+        navigate(`/session/${localSession.id}`, { state: { session: localSession } });
+      } catch (fallbackError) {
+        const message = fallbackError instanceof Error ? fallbackError.message : error instanceof Error ? error.message : 'Не удалось создать сессию';
+        toast({ title: 'Ошибка', description: message, variant: 'destructive' });
+      }
     }
   };
 

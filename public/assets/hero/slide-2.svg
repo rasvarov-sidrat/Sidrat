@@ -1,0 +1,31 @@
+﻿<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='900' viewBox='0 0 1600 900'>
+  <defs>
+    <linearGradient id='bg' x1='0%' y1='0%' x2='100%' y2='100%'>
+      <stop offset='0%' stop-color='#C5A059'/>
+      <stop offset='100%' stop-color='#8b6a2f'/>
+    </linearGradient>
+    <linearGradient id='glass' x1='0%' y1='0%' x2='100%' y2='100%'>
+      <stop offset='0%' stop-color='#ffffff' stop-opacity='0.28'/>
+      <stop offset='100%' stop-color='#ffffff' stop-opacity='0.08'/>
+    </linearGradient>
+  </defs>
+  <rect width='1600' height='900' fill='url(#bg)'/>
+  <circle cx='1290' cy='210' r='220' fill='#ffffff' fill-opacity='0.12'/>
+  <circle cx='1220' cy='680' r='300' fill='#ffffff' fill-opacity='0.08'/>
+  <rect x='90' y='90' width='1420' height='720' rx='44' fill='url(#glass)' stroke='#ffffff' stroke-opacity='0.18'/>
+  <rect x='110' y='110' width='220' height='44' rx='22' fill='#ffffff' fill-opacity='0.18'/>
+  <text x='144' y='141' fill='#ffffff' font-family='Arial, sans-serif' font-size='22' font-weight='700' letter-spacing='2'>SIDRAT</text>
+  <text x='120' y='315' fill='#ffffff' font-family='Arial, sans-serif' font-size='64' font-weight='700'>Live Sessions</text>
+  <text x='120' y='385' fill='#ffffff' font-family='Arial, sans-serif' font-size='28' opacity='0.88'>Active group-buy flow</text>
+  <text x='120' y='445' fill='#ffffff' font-family='Arial, sans-serif' font-size='24' opacity='0.82'>See slots, progress, and the next price in real time.</text>
+  <rect x='120' y='525' width='270' height='74' rx='22' fill='#ffffff'/>
+  <text x='171' y='572' fill='#8b6a2f' font-family='Arial, sans-serif' font-size='26' font-weight='700'>Shop now</text>
+  <g transform='translate(1040 185)'>
+    <rect x='0' y='0' width='380' height='500' rx='36' fill='#ffffff' fill-opacity='0.14' stroke='#ffffff' stroke-opacity='0.14'/>
+    <circle cx='190' cy='168' r='114' fill='#ffffff' fill-opacity='0.15'/>
+    <circle cx='190' cy='168' r='70' fill='#ffffff' fill-opacity='0.16'/>
+    <text x='190' y='176' text-anchor='middle' fill='#ffffff' font-family='Arial, sans-serif' font-size='42' font-weight='700'>LIVE</text>
+    <rect x='62' y='314' width='256' height='98' rx='28' fill='#ffffff' fill-opacity='0.18'/>
+    <text x='190' y='372' text-anchor='middle' fill='#ffffff' font-family='Arial, sans-serif' font-size='26' font-weight='700'>Local asset</text>
+  </g>
+</svg>

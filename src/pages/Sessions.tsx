@@ -1,19 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Clock3, Filter, Layers3, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { catalogCategories, getCatalogCategorySearchText } from '@/lib/catalog';
-import {
-  formatRuble,
-  getSessionFillBucket,
-  getSessionFillPercent,
-  getSessionNextPrice,
-  loadProducts,
-  loadSessions,
-  SESSION_FILL_BUCKET_OPTIONS,
-} from '@/lib/mvp';
-import type { User } from '@/types';
+import { apiFetch } from '@/lib/api';
+import { formatRuble, getSessionFillBucket, getSessionFillPercent, getSessionNextPrice, loadProducts, loadSessions, SESSION_FILL_BUCKET_OPTIONS } from '@/lib/mvp';
+import type { Product, Session, User } from '@/types';
 
 interface SessionsProps {
   user: User | null;
@@ -22,8 +16,28 @@ interface SessionsProps {
 export default function Sessions({ user }: SessionsProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [mode, setMode] = useState<'all' | 'my'>('all');
-  const sessions = loadSessions();
-  const products = loadProducts();
+  const sessionsQuery = useQuery({
+    queryKey: ['sessions'],
+    queryFn: async () => {
+      try {
+        return await apiFetch<Session[]>(`/api/v1/sessions`);
+      } catch {
+        return loadSessions();
+      }
+    },
+  });
+  const productsQuery = useQuery({
+    queryKey: ['catalog'],
+    queryFn: async () => {
+      try {
+        return await apiFetch<Product[]>(`/api/v1/catalog?limit=100`);
+      } catch {
+        return loadProducts();
+      }
+    },
+  });
+  const sessions = sessionsQuery.data || [];
+  const products = productsQuery.data || [];
   const familyById = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
   const query = searchParams.get('query') ?? '';
   const category = searchParams.get('category') ?? 'all';
@@ -85,6 +99,10 @@ export default function Sessions({ user }: SessionsProps) {
         return searchIndex.includes(normalizedQuery);
       });
   }, [familyById, mode, normalizedCategory, normalizedFill, query, sessions, user]);
+
+  if ((sessionsQuery.isLoading || productsQuery.isLoading) && sessions.length === 0 && products.length === 0) {
+    return <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">Загрузка сессий...</div>;
+  }
 
   const totalParticipants = visibleSessions.reduce((sum, session) => sum + session.participants.length, 0);
   const maxSavings = visibleSessions.length > 0 ? Math.max(...visibleSessions.map((session) => session.basePriceSnapshot - session.currentFloorPrice)) : 0;
@@ -166,7 +184,12 @@ export default function Sessions({ user }: SessionsProps) {
           const nextPrice = getSessionNextPrice(session);
           const fillPercent = getSessionFillPercent(session);
           return (
-            <Link key={session.id} to={`/session/${session.id}`} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-[#2A7F6E]">
+            <Link
+              key={session.id}
+              to={`/session/${session.id}`}
+              state={{ session }}
+              className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-[#2A7F6E]"
+            >
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">{session.title}</h3>

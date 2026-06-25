@@ -1,14 +1,37 @@
-import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, Package, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { loadOrders, formatRuble } from '@/lib/mvp';
+import { apiFetch } from '@/lib/api';
+import { formatRuble, loadOrders } from '@/lib/mvp';
+import type { Order } from '@/types';
 
 export default function OrderSuccess() {
   const { orderId } = useParams<{ orderId: string }>();
-  const order = useMemo(() => loadOrders().find((item) => item.id === orderId) || null, [orderId]);
+  const orderQuery = useQuery({
+    queryKey: ['order', orderId],
+    queryFn: async () => {
+      if (!orderId) {
+        throw new Error('Order ID required');
+      }
+      try {
+        return await apiFetch<Order>(`/api/v1/orders/${orderId}`);
+      } catch {
+        const localOrder = loadOrders().find((item) => item.id === orderId) || null;
+        if (!localOrder) {
+          throw new Error('Order not found');
+        }
+        return localOrder;
+      }
+    },
+    enabled: !!orderId,
+  });
+  const order = orderQuery.data || null;
 
   if (!order) {
+    if (orderQuery.isLoading) {
+      return <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">Загрузка заказа...</div>;
+    }
     return <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">Заказ не найден</div>;
   }
 

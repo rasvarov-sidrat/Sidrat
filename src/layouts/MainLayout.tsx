@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import type { User as UserType } from '@/types';
 import { useStore } from '@/stores/store';
 import CatalogMegaMenu from '@/components/CatalogMegaMenu';
+import { isVerifiedUser } from '@/lib/auth';
 
 interface MainLayoutProps {
   user: UserType | null;
@@ -56,13 +57,13 @@ export default function MainLayout({ user, onLogout }: MainLayoutProps) {
                   <span>{item.label}</span>
                 </Link>
               ))}
-              {user?.role === 'seller' || user?.role === 'admin' ? (
+              {user && isVerifiedUser(user) && (user.role === 'seller' || user.role === 'admin') ? (
                 <Link to="/seller" className="flex items-center space-x-1 text-sm font-medium text-gray-600 hover:text-[#2A7F6E]">
                   <Store className="w-4 h-4" />
                   <span>Продавец</span>
                 </Link>
               ) : null}
-              {user?.role === 'admin' ? (
+              {user && isVerifiedUser(user) && user.role === 'admin' ? (
                 <Link to="/admin" className="flex items-center space-x-1 text-sm font-medium text-gray-600 hover:text-[#2A7F6E]">
                   <Shield className="w-4 h-4" />
                   <span>Админ</span>
@@ -175,7 +176,7 @@ export default function MainLayout({ user, onLogout }: MainLayoutProps) {
                     <span>{item.label}</span>
                   </Link>
                 ))}
-                {user?.role === 'seller' || user?.role === 'admin' ? (
+                {user && isVerifiedUser(user) && (user.role === 'seller' || user.role === 'admin') ? (
                   <Link
                     to="/seller"
                     onClick={() => setMobileMenuOpen(false)}
@@ -185,7 +186,7 @@ export default function MainLayout({ user, onLogout }: MainLayoutProps) {
                     <span>Продавец</span>
                   </Link>
                 ) : null}
-                {user?.role === 'admin' ? (
+                {user && isVerifiedUser(user) && user.role === 'admin' ? (
                   <Link
                     to="/admin"
                     onClick={() => setMobileMenuOpen(false)}
@@ -261,13 +262,14 @@ export default function MainLayout({ user, onLogout }: MainLayoutProps) {
               <h4 className="font-medium text-gray-900 mb-3">Продавцам</h4>
               <ul className="space-y-2 text-sm text-gray-600">
                 <li><Link to="/seller" className="hover:text-[#2A7F6E]">Панель продавца</Link></li>
-                <li><Link to="/session/create/family-nike-air-max" className="hover:text-[#2A7F6E]">Создать сессию</Link></li>
+                <li><Link to="/catalog" className="hover:text-[#2A7F6E]">Создать сессию</Link></li>
                 <li><Link to="/admin" className="hover:text-[#2A7F6E]">Инструменты админа</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-medium text-gray-900 mb-3">Контакты</h4>
               <ul className="space-y-2 text-sm text-gray-600">
+                <li><Link to="/seller-application" className="hover:text-[#2A7F6E]">Подать заявку продавца</Link></li>
                 <li>support@sidrat.local</li>
                 <li>+7 (999) 123-45-67</li>
               </ul>

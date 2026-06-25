@@ -1,52 +1,48 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { getHeroSlides } from '@/lib/image-manifest';
+import { fetchHeroSlides } from '@/lib/cms';
+const staticSlides = getHeroSlides();
 
-const slides = [
-  {
-    id: 1,
-    title: 'Покупайте вместе.',
-    subtitle: 'MVP маркетплейса для групповых покупок',
-    description: 'SIDRAT строится вокруг GB-сессий на товарные семейства. Вы выбираете допустимый вариант, занимаете слот и двигаете цену вниз вместе с другими покупателями.',
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1600',
-    cta: 'Смотреть каталог',
-    link: '/catalog',
-  },
-  {
-    id: 2,
-    title: 'Активные GB-сессии.',
-    subtitle: 'Смотрите, где уже живое движение',
-    description: 'Открывайте текущие сессии, смотрите занятые слоты, следующую цену и кто уже вошёл в покупку.',
-    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1600',
-    cta: 'Активные сессии',
-    link: '/sessions',
-  },
-  {
-    id: 3,
-    title: 'Создавайте собственную сессию.',
-    subtitle: 'Для продавца или куратора семейства',
-    description: 'Настраивайте размеры, цвета и срок жизни сессии, чтобы запускать свою групповую покупку за пару шагов.',
-    image: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=1600',
-    cta: 'Создать сессию',
-    link: '/catalog',
-  },
-  {
-    id: 4,
-    title: 'Возвращайте разницу в wallet.',
-    subtitle: 'Когда слоты закрываются, скидка работает дальше',
-    description: 'Каждый следующий слот сдвигает цену вниз, а разница возвращается на внутренний баланс без лишних действий.',
-    image: 'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=1600',
-    cta: 'Открыть кошелёк',
-    link: '/wallet',
-  },
-];
+type HeroSlideView = {
+  title: string;
+  subtitle: string;
+  description: string;
+  image: string;
+  ctaText: string;
+  ctaLink: string;
+};
+
+function normalizeSlides(slides: Array<any>): HeroSlideView[] {
+  return slides.map((slide) => ({
+    title: slide.title,
+    subtitle: slide.subtitle || '',
+    description: slide.description || '',
+    image: slide.image || slide.sourceUrl || slide.mediaAsset?.source_url || slide.mediaAsset?.sourceUrl || '',
+    ctaText: slide.ctaText || slide.cta || '',
+    ctaLink: slide.ctaLink || slide.link || '',
+  }));
+}
 
 export default function HeroCarousel() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [direction, setDirection] = useState(1);
   const [paused, setPaused] = useState(false);
+  const slidesQuery = useQuery({
+    queryKey: ['cms-hero-slides'],
+    queryFn: async () => {
+      try {
+        return await fetchHeroSlides();
+      } catch {
+        return staticSlides;
+      }
+    },
+  });
+  const slides = useMemo(() => normalizeSlides((slidesQuery.data || staticSlides) as Array<any>), [slidesQuery.data]);
 
   const scrollTo = useCallback((index: number) => {
     setDirection(index > selectedIndex ? 1 : -1);
@@ -90,7 +86,7 @@ export default function HeroCarousel() {
         >
           <div
             className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${slides[selectedIndex].image})` }}
+            style={{ backgroundImage: `url(${slides[selectedIndex].image || staticSlides[selectedIndex]?.image || staticSlides[0].image})` }}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#17493f]/95 via-[#2A7F6E]/75 to-transparent" />
           <div className="absolute inset-0 flex items-center">
@@ -111,7 +107,7 @@ export default function HeroCarousel() {
                   {slides[selectedIndex].description}
                 </p>
                 <Button asChild size="lg" className="bg-white px-8 py-6 text-lg font-semibold text-[#17493f] hover:bg-gray-100">
-                  <Link to={slides[selectedIndex].link}>{slides[selectedIndex].cta}</Link>
+                  <Link to={slides[selectedIndex].ctaLink}>{slides[selectedIndex].ctaText}</Link>
                 </Button>
               </motion.div>
             </div>

@@ -4,6 +4,18 @@ build/
 coverage/
 .vite/
 
+#ignote all python generated stuff
+**/__pycache__/
+*.py[cod]
+
+# Local SQLite databases
+backend/*.db
+backend/*.db.*
+backend/dev-*.db*
+
+
+
+
 # Environment files
 .env
 .env.*

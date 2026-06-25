@@ -1,11 +1,11 @@
-import { Product, User, TierConfig } from '@/types';
+﻿import { Product, User, TierConfig } from '@/types';
 
 export const tierConfigs: TierConfig[] = [
-  { name: 'Bronze', minUnits: 5, discount: 5, color: '#CD7F32', icon: '🥉' },
-  { name: 'Silver', minUnits: 15, discount: 10, color: '#C0C0C0', icon: '🥈' },
-  { name: 'Gold', minUnits: 30, discount: 15, color: '#FFD700', icon: '🥇' },
-  { name: 'Platinum', minUnits: 50, discount: 20, color: '#E5E4E2', icon: '💎' },
-  { name: 'Diamond', minUnits: 100, discount: 30, color: '#B9F2FF', icon: '💠' },
+  { name: 'Bronze', minUnits: 5, discount: 5, color: '#CD7F32', icon: 'рџҐ‰' },
+  { name: 'Silver', minUnits: 15, discount: 10, color: '#C0C0C0', icon: 'рџҐ€' },
+  { name: 'Gold', minUnits: 30, discount: 15, color: '#FFD700', icon: 'рџҐ‡' },
+  { name: 'Platinum', minUnits: 50, discount: 20, color: '#E5E4E2', icon: 'рџ’Ћ' },
+  { name: 'Diamond', minUnits: 100, discount: 30, color: '#B9F2FF', icon: 'рџ’ ' },
 ];
 
 export const products: Product[] = [
@@ -17,10 +17,10 @@ export const products: Product[] = [
     price: 1199,
     originalPrice: 1299,
     category: 'smartphones',
-    image: 'https://images.unsplash.com/photo-1696446701796-da61225697cc?w=800',
+    image: '/assets/products/iphone-15-pro-max/cover.svg',
     images: [
-      'https://images.unsplash.com/photo-1696446701796-da61225697cc?w=800',
-      'https://images.unsplash.com/photo-1696446702188-3d5f53f49c2f?w=800',
+      '/assets/products/iphone-15-pro-max/cover.svg',
+      '/assets/products/iphone-15-pro-max/alt-1.svg',
     ],
     rating: 4.9,
     reviews: 2847,
@@ -51,10 +51,10 @@ export const products: Product[] = [
     price: 1299,
     originalPrice: 1399,
     category: 'smartphones',
-    image: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=800',
+    image: '/assets/products/samsung-galaxy-s24-ultra/cover.svg',
     images: [
-      'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=800',
-      'https://images.unsplash.com/photo-1610945264803-c22b62d2a7b3?w=800',
+      '/assets/products/samsung-galaxy-s24-ultra/cover.svg',
+      '/assets/products/samsung-galaxy-s24-ultra/cover.svg',
     ],
     rating: 4.8,
     reviews: 1923,
@@ -85,10 +85,10 @@ export const products: Product[] = [
     price: 189,
     originalPrice: 220,
     category: 'footwear',
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800',
+    image: '/assets/products/nike-air-max-2024/cover.svg',
     images: [
-      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800',
-      'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=800',
+      '/assets/products/nike-air-max-2024/cover.svg',
+      '/assets/products/nike-air-max-2024/alt-1.svg',
     ],
     rating: 4.6,
     reviews: 892,
@@ -119,9 +119,9 @@ export const products: Product[] = [
     price: 190,
     originalPrice: 230,
     category: 'footwear',
-    image: 'https://images.unsplash.com/photo-1587563871167-1ee9c731aefb?w=800',
+    image: '/assets/products/adidas-ultraboost-light/cover.svg',
     images: [
-      'https://images.unsplash.com/photo-1587563871167-1ee9c731aefb?w=800',
+      '/assets/products/adidas-ultraboost-light/cover.svg',
     ],
     rating: 4.7,
     reviews: 1234,
@@ -152,9 +152,9 @@ export const products: Product[] = [
     price: 399,
     originalPrice: 449,
     category: 'audio',
-    image: 'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=800',
+    image: '/assets/products/sony-wh-1000xm5/cover.svg',
     images: [
-      'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=800',
+      '/assets/products/sony-wh-1000xm5/cover.svg',
     ],
     rating: 4.7,
     reviews: 3421,
@@ -183,10 +183,10 @@ export const products: Product[] = [
     price: 2499,
     originalPrice: 2699,
     category: 'laptops',
-    image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800',
+    image: '/assets/products/macbook-pro-16/cover.svg',
     images: [
-      'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800',
-      'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=800',
+      '/assets/products/macbook-pro-16/cover.svg',
+      '/assets/products/macbook-pro-16/cover.svg',
     ],
     rating: 4.9,
     reviews: 1567,

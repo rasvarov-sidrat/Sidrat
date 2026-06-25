@@ -43,9 +43,10 @@ import {
   createSellerProduct,
   draftFromProduct,
   parseCommaList,
-  validateSellerProductDraft,
   type SellerProductDraft,
+  validateSellerProductDraft,
 } from '@/lib/seller';
+import { getProductImageOptions } from '@/lib/image-manifest';
 import type { User } from '@/types';
 
 interface SellerDashboardProps {
@@ -95,6 +96,10 @@ export default function SellerDashboard({ user }: SellerDashboardProps) {
   const draftValidation = useMemo(() => validateSellerProductDraft(draft), [draft]);
   const selectedFootwearSizeIds = draft.shoeSizeIds.length > 0 ? draft.shoeSizeIds : getShoeSizeIdsFromLegacySizes(draft.allowedSizes);
   const selectedFootwearSizeSet = new Set(selectedFootwearSizeIds);
+  const imageOptions = useMemo(
+    () => getProductImageOptions(draft.slug || selectedProduct?.slug || undefined),
+    [draft.slug, selectedProduct?.slug],
+  );
 
   useEffect(() => {
     if (selectedProductId !== 'new' && !snapshot.products.some((product) => product.id === selectedProductId)) {
@@ -541,18 +546,60 @@ export default function SellerDashboard({ user }: SellerDashboardProps) {
                     </>
                   ) : null}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="seller-image">Главное изображение</Label>
-                    <Input id="seller-image" value={draft.image} onChange={(event) => updateDraft({ image: event.target.value })} placeholder="https://..." />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="seller-gallery">Галерея, через запятую</Label>
-                    <Input
-                      id="seller-gallery"
-                      value={draft.images.join(', ')}
-                      onChange={(event) => updateDraft({ images: parseCommaList(event.target.value) })}
-                      placeholder="https://..., https://..."
-                    />
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="seller-image">Главное изображение</Label>
+                      <Select
+                        value={draft.image || '__none__'}
+                        onValueChange={(value) => updateDraft({ image: value === '__none__' ? '' : value })}
+                      >
+                        <SelectTrigger id="seller-image">
+                          <SelectValue placeholder="Выберите локальный файл" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Не выбрано</SelectItem>
+                          {imageOptions.map((option) => (
+                            <SelectItem key={option.src} value={option.src}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Галерея из локальных ассетов</Label>
+                      <p className="text-xs text-gray-500">Кликни по карточке, чтобы добавить или убрать изображение из галереи.</p>
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        {imageOptions.map((option) => {
+                          const selected = draft.images.includes(option.src);
+                          return (
+                            <button
+                              key={option.src}
+                              type="button"
+                              onClick={() =>
+                                updateDraft({
+                                  images: selected
+                                    ? draft.images.filter((src) => src !== option.src)
+                                    : [...draft.images, option.src],
+                                })
+                              }
+                              className={`overflow-hidden rounded-2xl border text-left transition ${
+                                selected
+                                  ? 'border-[#2A7F6E] bg-[#2A7F6E]/5 shadow-sm'
+                                  : 'border-gray-200 bg-white hover:border-[#2A7F6E]/40 hover:bg-gray-50'
+                              }`}
+                            >
+                              <img src={option.src} alt={option.label} className="h-28 w-full object-cover" />
+                              <div className="space-y-1 p-3">
+                                <p className="text-sm font-medium text-gray-900">{option.label}</p>
+                                <p className="text-xs text-gray-500">{option.src}</p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -815,7 +862,22 @@ export default function SellerDashboard({ user }: SellerDashboardProps) {
                           </div>
                           <div className="space-y-2 xl:col-span-1">
                             <Label>Image</Label>
-                            <Input value={variant.image} onChange={(event) => updateVariant(index, { image: event.target.value })} />
+                            <Select
+                              value={variant.image || '__none__'}
+                              onValueChange={(value) => updateVariant(index, { image: value === '__none__' ? '' : value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Local asset" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__none__">Не выбрано</SelectItem>
+                                {imageOptions.map((option) => (
+                                  <SelectItem key={`${variant.id || index}-${option.src}`} value={option.src}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                           <div className="flex items-end gap-3">
                             <label className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700">

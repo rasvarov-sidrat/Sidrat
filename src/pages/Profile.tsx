@@ -1,11 +1,12 @@
-import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { BadgeCheck, Copy, UserCircle2, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getUserOrders, getUserWalletTransactions, getUserWithdrawals, loadSessions, formatRuble, findUserByReferralCode } from '@/lib/mvp';
-import type { User } from '@/types';
+import { apiFetch, resolveBackendUserId } from '@/lib/api';
+import { formatRuble, findUserByReferralCode, getUserOrders, getUserWalletTransactions, getUserWithdrawals, loadSessions } from '@/lib/mvp';
+import type { Order, Session, User, WalletTransaction, WithdrawalRequest } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
 
 interface ProfileProps {
@@ -15,13 +16,67 @@ interface ProfileProps {
 
 export default function Profile({ user }: ProfileProps) {
   const { toast } = useToast();
-  const orders = useMemo(() => getUserOrders(user.id), [user.id]);
-  const walletTransactions = useMemo(() => getUserWalletTransactions(user.id), [user.id]);
-  const withdrawals = useMemo(() => getUserWithdrawals(user.id), [user.id]);
-  const sessions = useMemo(() => loadSessions(), []);
-  const mySessions = sessions.filter((session) => session.createdBy === user.id || session.participants.some((participant) => participant.userId === user.id));
-  const referralLink = `${window.location.origin}/register?ref=${encodeURIComponent(user.referralCode)}`;
-  const inviter = useMemo(() => (user.referredBy ? findUserByReferralCode(user.referredBy) : null), [user.referredBy]);
+  const meQuery = useQuery({
+    queryKey: ['me'],
+    queryFn: async () => {
+      try {
+        return await apiFetch<User>(`/api/v1/me`);
+      } catch {
+        return user;
+      }
+    },
+  });
+  const profileUser = meQuery.data || user;
+  const ordersQuery = useQuery({
+    queryKey: ['profile-orders', profileUser.id],
+    queryFn: async () => {
+      try {
+        return await apiFetch<Order[]>(`/api/v1/orders`);
+      } catch {
+        return getUserOrders(profileUser.id);
+      }
+    },
+  });
+  const walletQuery = useQuery({
+    queryKey: ['profile-wallet', profileUser.id],
+    queryFn: async () => {
+      try {
+        return await apiFetch<WalletTransaction[]>(`/api/v1/wallet/transactions`);
+      } catch {
+        return getUserWalletTransactions(profileUser.id);
+      }
+    },
+  });
+  const withdrawalsQuery = useQuery({
+    queryKey: ['profile-withdrawals', profileUser.id],
+    queryFn: async () => {
+      try {
+        return await apiFetch<WithdrawalRequest[]>(`/api/v1/withdrawals`);
+      } catch {
+        return getUserWithdrawals(profileUser.id);
+      }
+    },
+  });
+  const sessionsQuery = useQuery({
+    queryKey: ['profile-sessions'],
+    queryFn: async () => {
+      try {
+        return await apiFetch<Session[]>(`/api/v1/sessions`);
+      } catch {
+        return loadSessions();
+      }
+    },
+  });
+  const orders = ordersQuery.data || [];
+  const walletTransactions = walletQuery.data || [];
+  const withdrawals = withdrawalsQuery.data || [];
+  const sessions = sessionsQuery.data || [];
+  const backendUserId = resolveBackendUserId(profileUser.id);
+  const mySessions = sessions.filter(
+    (session) => session.createdBy === backendUserId || session.participants.some((participant) => participant.userId === backendUserId),
+  );
+  const referralLink = `${window.location.origin}/register?ref=${encodeURIComponent(profileUser.referralCode)}`;
+  const inviter = profileUser.referredBy ? findUserByReferralCode(profileUser.referredBy) : null;
 
   const copyReferralLink = async () => {
     try {
@@ -42,18 +97,18 @@ export default function Profile({ user }: ProfileProps) {
                 <UserCircle2 className="h-8 w-8" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold">{user.name}</h1>
-                <p className="text-white/80">{user.email}</p>
+                <h1 className="text-3xl font-bold">{profileUser.name}</h1>
+                <p className="text-white/80">{profileUser.email}</p>
                 <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-sm">
                   <BadgeCheck className="h-4 w-4" />
-                  {user.role}
+                  {profileUser.role}
                 </div>
               </div>
             </div>
 
             <div className="rounded-3xl bg-white/10 p-5 text-right">
               <p className="text-sm text-white/70">Баланс кошелька</p>
-              <p className="mt-1 text-4xl font-bold">{formatRuble(user.walletBalance || 0)}</p>
+              <p className="mt-1 text-4xl font-bold">{formatRuble(profileUser.walletBalance || 0)}</p>
             </div>
           </div>
         </CardContent>
@@ -72,7 +127,7 @@ export default function Profile({ user }: ProfileProps) {
           <div className="flex flex-col gap-3 md:w-[420px]">
             <div className="rounded-2xl bg-gray-50 px-4 py-3">
               <p className="text-xs uppercase tracking-wide text-gray-500">Ваш код</p>
-              <p className="mt-1 font-mono text-sm text-gray-900">{user.referralCode}</p>
+              <p className="mt-1 font-mono text-sm text-gray-900">{profileUser.referralCode}</p>
             </div>
             <div className="rounded-2xl bg-gray-50 px-4 py-3">
               <p className="text-xs uppercase tracking-wide text-gray-500">Ссылка</p>

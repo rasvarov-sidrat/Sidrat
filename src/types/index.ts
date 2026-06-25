@@ -70,6 +70,8 @@ export interface User {
   email: string;
   name: string;
   role: Role;
+  emailVerifiedAt?: string | null;
+  isActive?: boolean;
   walletBalance: number;
   referralCode: string;
   avatar?: string;
@@ -220,4 +222,95 @@ export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   message?: string;
+}
+
+export interface CmsMediaAsset {
+  id: string;
+  key: string;
+  label: string;
+  altText?: string | null;
+  kind: string;
+  sourceUrl: string;
+  mimeType?: string | null;
+  width?: number | null;
+  height?: number | null;
+  usage?: string | null;
+  tags?: string[] | null;
+  metadata?: Record<string, unknown> | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CmsHeroSlide {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  description?: string | null;
+  ctaText?: string | null;
+  ctaLink?: string | null;
+  mediaAssetId?: string | null;
+  image?: string | null;
+  position: number;
+  visible: boolean;
+  status: string;
+  props?: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CmsBlock {
+  id: string;
+  pageId: string;
+  blockType: string;
+  position: number;
+  visible: boolean;
+  title?: string | null;
+  subtitle?: string | null;
+  body?: string | null;
+  ctaText?: string | null;
+  ctaLink?: string | null;
+  mediaAssetId?: string | null;
+  props?: Record<string, unknown> | null;
+  templateKey?: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CmsPage {
+  id: string;
+  slug: string;
+  title: string;
+  templateKey: string;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  status: string;
+  publishedAt?: string | null;
+  publishedBy?: string | null;
+  settings?: Record<string, unknown> | null;
+  blocks: CmsBlock[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductDisplayConfig {
+  id: string;
+  productId: string;
+  templateKey: string;
+  headline?: string | null;
+  subtitle?: string | null;
+  badgeText?: string | null;
+  ctaText?: string | null;
+  ctaLink?: string | null;
+  heroMediaAssetId?: string | null;
+  heroImageUrl?: string | null;
+  galleryMediaAssetIds?: string[] | null;
+  galleryUrls?: string[] | null;
+  specs?: Record<string, unknown> | null;
+  sections?: Array<Record<string, unknown>> | null;
+  status: string;
+  props?: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
 }

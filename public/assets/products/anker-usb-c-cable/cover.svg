@@ -1,0 +1,30 @@
+﻿<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='1200' viewBox='0 0 1200 1200'>
+  <defs>
+    <linearGradient id='bg' x1='0%' y1='0%' x2='100%' y2='100%'>
+      <stop offset='0%' stop-color='#22c55e'/>
+      <stop offset='100%' stop-color='#14532d'/>
+    </linearGradient>
+    <linearGradient id='card' x1='0%' y1='0%' x2='100%' y2='100%'>
+      <stop offset='0%' stop-color='#ffffff' stop-opacity='0.22'/>
+      <stop offset='100%' stop-color='#ffffff' stop-opacity='0.08'/>
+    </linearGradient>
+  </defs>
+  <rect width='1200' height='1200' fill='url(#bg)'/>
+  <circle cx='220' cy='220' r='180' fill='#ffffff' fill-opacity='0.12'/>
+  <circle cx='980' cy='290' r='240' fill='#ffffff' fill-opacity='0.08'/>
+  <circle cx='940' cy='950' r='300' fill='#ffffff' fill-opacity='0.08'/>
+  <rect x='70' y='70' width='1060' height='1060' rx='52' fill='url(#card)' stroke='#ffffff' stroke-opacity='0.16'/>
+  <rect x='110' y='110' width='176' height='40' rx='20' fill='#ffffff' fill-opacity='0.18'/>
+  <text x='138' y='138' fill='#ffffff' font-family='Arial, sans-serif' font-size='18' font-weight='700' letter-spacing='1.5'>SIDRAT</text>
+  <text x='110' y='230' fill='#ffffff' font-family='Arial, sans-serif' font-size='56' font-weight='700'>Anker USB-C Cable</text>
+  <text x='110' y='280' fill='#ffffff' font-family='Arial, sans-serif' font-size='24' opacity='0.9'>Accessory family</text>
+  <g transform='translate(160 360)'>
+    <rect x='0' y='0' width='680' height='500' rx='48' fill='#ffffff' fill-opacity='0.12'/>
+    <circle cx='340' cy='250' r='180' fill='#ffffff' fill-opacity='0.16'/>
+    <circle cx='340' cy='250' r='110' fill='#ffffff' fill-opacity='0.2'/>
+    <text x='340' y='264' text-anchor='middle' fill='#ffffff' font-family='Arial, sans-serif' font-size='58' font-weight='700'>CABLE</text>
+  </g>
+  <rect x='110' y='920' width='520' height='120' rx='34' fill='#ffffff' fill-opacity='0.15'/>
+  <text x='150' y='972' fill='#ffffff' font-family='Arial, sans-serif' font-size='26' font-weight='700'>Product media</text>
+  <text x='150' y='1012' fill='#ffffff' font-family='Arial, sans-serif' font-size='22' opacity='0.86'>Local file stored in public/assets</text>
+</svg>

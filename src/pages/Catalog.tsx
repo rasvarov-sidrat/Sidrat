@@ -1,13 +1,18 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Search, Users, BadgePercent, Layers3 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { catalogCategories, getCatalogCategory, getCatalogGroup, productMatchesCatalogCategory } from '@/lib/catalog';
-import { formatRuble, getFamilyActiveSessions, getProductCoverImage, getProductImages, loadProducts } from '@/lib/mvp';
+import { apiFetch } from '@/lib/api';
+import { fetchCmsPage } from '@/lib/cms';
+import { formatRuble, getFamilyActiveSessions, getProductCoverImage, getProductImages, loadProducts, getCurrentUser } from '@/lib/mvp';
+import { canCreateGb, isVerifiedUser } from '@/lib/auth';
+import type { Product } from '@/types';
 
 export default function Catalog() {
-  const products = loadProducts();
+  const currentUser = getCurrentUser();
   const [query, setQuery] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
   const category = searchParams.get('category') ?? 'all';
@@ -15,6 +20,29 @@ export default function Catalog() {
   const item = searchParams.get('item') ?? '';
   const selectedCategory = getCatalogCategory(category);
   const selectedGroup = category === 'electronics' && section ? getCatalogGroup(category, section) : null;
+  const productsQuery = useQuery({
+    queryKey: ['catalog'],
+    queryFn: async () => {
+      try {
+        return await apiFetch<Product[]>(`/api/v1/catalog?limit=100`);
+      } catch {
+        return loadProducts();
+      }
+    },
+  });
+  const catalogPageQuery = useQuery({
+    queryKey: ['cms-page-catalog'],
+    queryFn: async () => {
+      try {
+        return await fetchCmsPage('catalog');
+      } catch {
+        return null;
+      }
+    },
+  });
+  const products = productsQuery.data || [];
+  const catalogPage = catalogPageQuery.data || null;
+  const catalogBanner = catalogPage?.blocks?.find((block) => block.blockType === 'promo_banner' || block.blockType === 'text');
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
@@ -25,6 +53,10 @@ export default function Catalog() {
       return matchesQuery && matchesCategory;
     });
   }, [category, item, products, query, section]);
+
+  if (productsQuery.isLoading && products.length === 0) {
+    return <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">Загрузка каталога...</div>;
+  }
 
   const updateCategory = (nextCategory: string) => {
     const nextParams = new URLSearchParams(searchParams);
@@ -65,8 +97,8 @@ export default function Catalog() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wide text-[#2A7F6E]">Каталог SIDRAT</p>
-            <h1 className="mt-2 text-3xl font-bold text-gray-900">{selectedCategory.label}</h1>
-            <p className="mt-2 max-w-2xl text-gray-600">{selectedCategory.description}</p>
+            <h1 className="mt-2 text-3xl font-bold text-gray-900">{catalogBanner?.title || selectedCategory.label}</h1>
+            <p className="mt-2 max-w-2xl text-gray-600">{catalogBanner?.body || selectedCategory.description}</p>
           </div>
 
           <div className="relative w-full lg:max-w-md">
@@ -123,6 +155,13 @@ export default function Catalog() {
         </aside>
 
         <section className="space-y-5">
+          {catalogBanner ? (
+            <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+              <p className="text-sm font-medium uppercase tracking-wide text-[#2A7F6E]">{catalogBanner.subtitle || 'CMS banner'}</p>
+              <h2 className="mt-1 text-xl font-bold text-gray-900">{catalogBanner.title}</h2>
+              <p className="mt-2 text-gray-600">{catalogBanner.body}</p>
+            </div>
+          ) : null}
           <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -289,11 +328,19 @@ export default function Catalog() {
                           Подробнее
                         </div>
                       </Link>
-                      <Link to={`/session/create/${product.id}`} className="flex-1">
-                        <div className="w-full rounded-xl bg-[#2A7F6E] px-4 py-2 text-center text-sm font-medium text-white transition hover:bg-[#236b5d]">
-                          Создать GB
-                        </div>
-                      </Link>
+                      {currentUser && isVerifiedUser(currentUser) && canCreateGb(currentUser) ? (
+                        <Link to={`/session/create/${product.slug}`} className="flex-1">
+                          <div className="w-full rounded-xl bg-[#2A7F6E] px-4 py-2 text-center text-sm font-medium text-white transition hover:bg-[#236b5d]">
+                            Создать GB
+                          </div>
+                        </Link>
+                      ) : (
+                        <Link to="/#seller-application" className="flex-1">
+                          <div className="w-full rounded-xl border border-[#2A7F6E] bg-white px-4 py-2 text-center text-sm font-medium text-[#2A7F6E] transition hover:bg-[#2A7F6E]/10">
+                            Стать продавцом
+                          </div>
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </motion.div>

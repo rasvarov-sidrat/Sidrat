@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, BadgeCheck, Clock3, ImageOff, MapPin, PlayCircle, ShieldCheck, ShoppingCart, Truck, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,9 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PriceDisplay } from '@/components/PriceDisplay';
 import { ProgressBar } from '@/components/ProgressBar';
-import { findProductFamily, getFamilyActiveSessions, getProductCoverImage, getProductImages, getSessionFillPercent, getSessionPriceTable, formatRuble } from '@/lib/mvp';
+import { apiFetch } from '@/lib/api';
+import { fetchProductDisplay } from '@/lib/cms';
+import { findProductFamily, getProductCoverImage, getProductImages, getSessionFillPercent, getSessionPriceTable, formatRuble, loadSessions } from '@/lib/mvp';
 import { formatShoeSizeLabel, getProductShoeSizes, isFootwearCategory } from '@/lib/shoe-sizes';
-import type { User } from '@/types';
+import type { Product, Session, User } from '@/types';
 import { useStore } from '@/stores/store';
 
 interface ProductDetailProps {
@@ -22,7 +25,49 @@ export default function ProductDetail({ user }: ProductDetailProps) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [brokenImages, setBrokenImages] = useState<Record<number, boolean>>({});
   const [selectedShoeSizeId, setSelectedShoeSizeId] = useState('');
-  const product = useMemo(() => findProductFamily(slug || ''), [slug]);
+  const productQuery = useQuery({
+    queryKey: ['product', slug],
+    queryFn: async () => {
+      if (!slug) throw new Error('Product slug required');
+      try {
+        return await apiFetch<Product>(`/api/v1/products/${slug}`);
+      } catch {
+        const fallback = findProductFamily(slug);
+        if (!fallback) throw new Error('Product not found');
+        return fallback;
+      }
+    },
+    enabled: !!slug,
+  });
+  const sessionsQuery = useQuery({
+    queryKey: ['product-sessions', slug],
+    queryFn: async () => {
+      if (!slug) throw new Error('Product slug required');
+      try {
+        return await apiFetch<Session[]>(`/api/v1/products/${slug}/sessions`);
+      } catch {
+        const fallbackProduct = findProductFamily(slug);
+        const allSessions = loadSessions();
+        if (!fallbackProduct) return [];
+        return allSessions.filter((session) => session.familyId === fallbackProduct.id && session.status === 'active');
+      }
+    },
+    enabled: !!slug,
+  });
+  const displayQuery = useQuery({
+    queryKey: ['product-display', slug],
+    queryFn: async () => {
+      if (!slug) throw new Error('Product slug required');
+      try {
+        return await fetchProductDisplay(slug);
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!slug,
+  });
+  const product = productQuery.data || null;
+  const productDisplay = displayQuery.data || null;
   const cart = useStore((state) => state.cart);
   const addToCart = useStore((state) => state.addToCart);
   const removeFromCart = useStore((state) => state.removeFromCart);
@@ -33,7 +78,7 @@ export default function ProductDetail({ user }: ProductDetailProps) {
   }, [slug]);
 
   const images = product ? getProductImages(product) : [];
-  const activeSessions = product ? getFamilyActiveSessions(product.id) : [];
+  const activeSessions = (sessionsQuery.data || []).filter((session) => session.status === 'active');
   const priceTable = activeSessions[0] ? getSessionPriceTable(activeSessions[0]) : [];
   const currentPrice = product ? (activeSessions[0]?.currentFloorPrice ?? product.basePrice) : 0;
   const originalPrice = product ? Math.max(product.basePrice, currentPrice + product.discountStep * 10) : 0;
@@ -58,6 +103,10 @@ export default function ProductDetail({ user }: ProductDetailProps) {
       setSelectedShoeSizeId(footwearSizes[0].id);
     }
   }, [footwearSizes, isFootwear, selectedShoeSizeId]);
+
+  if (productQuery.isLoading || sessionsQuery.isLoading) {
+    return <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">Загрузка товара...</div>;
+  }
 
   if (!product) {
     return <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">Товар не найден</div>;
@@ -117,7 +166,6 @@ export default function ProductDetail({ user }: ProductDetailProps) {
     ? priceTable[activeSession.currentSlots]?.price ?? activeSession.currentFloorPrice
     : priceTable[0]?.price ?? product.basePrice;
   const priceSaving = Math.max(0, originalPrice - currentPrice);
-
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <button onClick={() => navigate(-1)} className="inline-flex items-center text-sm text-gray-600 hover:text-[#2A7F6E]">
@@ -126,8 +174,8 @@ export default function ProductDetail({ user }: ProductDetailProps) {
       </button>
 
       <div className="space-y-2">
-        <p className="text-sm font-medium uppercase tracking-wide text-[#2A7F6E]">{product.category}</p>
-        <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">{product.name}</h1>
+        <p className="text-sm font-medium uppercase tracking-wide text-[#2A7F6E]">{productDisplay?.subtitle || product.category}</p>
+        <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">{productDisplay?.headline || product.name}</h1>
         <p className="max-w-3xl text-sm text-gray-600">
           Карточка товара в marketplace-формате: визуал, цена, варианты, доверие и быстрые действия для GB-сессии и корзины.
         </p>
@@ -418,10 +466,10 @@ export default function ProductDetail({ user }: ProductDetailProps) {
               </div>
 
               <div className="mt-5 space-y-3">
-                <Link to={`/session/create/${product.id}`} className="block">
+                <Link to={productDisplay?.ctaLink || `/session/create/${product.slug}`} className="block">
                   <Button className="w-full rounded-full bg-[#2A7F6E] text-white hover:bg-[#236b5d]">
                     <PlayCircle className="mr-2 h-4 w-4" />
-                    Создать GB-сессию
+                    {productDisplay?.ctaText || 'Создать GB-сессию'}
                   </Button>
                 </Link>
                 <Link to="/sessions" className="block">
@@ -523,6 +571,7 @@ export default function ProductDetail({ user }: ProductDetailProps) {
                     <Link
                       key={session.id}
                       to={`/session/${session.id}`}
+                      state={{ session }}
                       className="block rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-[#2A7F6E] hover:shadow-md"
                     >
                       <div className="flex items-start justify-between gap-4">

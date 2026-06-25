@@ -1,5 +1,6 @@
 import { buildCatalogProductSlug, catalogCategories, getCatalogCategorySearchText, getCatalogGroup, slugifyCatalogSegment } from '@/lib/catalog';
 import { DEFAULT_PRODUCT_IMAGE, getFamilyActiveSessions, getProductCoverImage, getProductImages, getSessionFillPercent, loadOrders, loadProducts, loadSessions, loadWalletTransactions, saveProducts } from '@/lib/mvp';
+import { getProductImageOptions, isLocalAssetPath } from '@/lib/image-manifest';
 import {
   getLegacyShoeSizesFromIds,
   getShoeSizeIdsFromLegacySizes,
@@ -309,7 +310,7 @@ function buildProductVariants(productId: string, variants: SellerVariantDraft[])
     color: variant.color.trim() || 'Default',
     sku: variant.sku.trim() || undefined,
     stock: Math.max(0, Math.round(variant.stock || 0)),
-    image: variant.image.trim() || undefined,
+    image: isLocalAssetPath(variant.image) ? variant.image.trim() : undefined,
     isAllowedInGb: variant.isAllowedInGb,
   }));
 }
@@ -589,7 +590,7 @@ export function createSellerProduct(user: User, draft: SellerProductDraft, exist
   const productId = existingProduct?.id || draft.id || `seller-product-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const slug = uniqueProductSlug(products, draft.slug || normalizedName, existingProduct?.id);
   const categorySlug = buildProductCategorySlug(draft.category, draft.catalogSectionSlug, draft.catalogItemSlug);
-  const images = draft.images.map((item) => item.trim()).filter(Boolean);
+  const images = draft.images.map((item) => item.trim()).filter((item) => isLocalAssetPath(item));
   const normalizedVariants = buildProductVariants(productId, draft.variants);
   const normalizedShoeSizeIds = Array.from(new Set(draft.shoeSizeIds.map((item) => item.trim()).filter(Boolean)));
   const footwearSizes = normalizedShoeSizeIds.length > 0 ? getShoeSizeOptionsByIds(normalizedShoeSizeIds) : [];
@@ -605,8 +606,10 @@ export function createSellerProduct(user: User, draft: SellerProductDraft, exist
     description: draft.description.trim(),
     category: draft.category,
     categorySlug,
-    image: draft.image.trim() || images[0] || existingProduct?.image || DEFAULT_PRODUCT_IMAGE,
-    images: images.length > 0 ? images : draft.image.trim() ? [draft.image.trim()] : existingProduct?.images?.length ? existingProduct.images : [DEFAULT_PRODUCT_IMAGE],
+    image: isLocalAssetPath(draft.image)
+      ? draft.image.trim()
+      : images[0] || (existingProduct?.image && isLocalAssetPath(existingProduct.image) ? existingProduct.image : DEFAULT_PRODUCT_IMAGE),
+    images: images.length > 0 ? images : isLocalAssetPath(draft.image) ? [draft.image.trim()] : existingProduct?.images?.length ? existingProduct.images.filter((item) => isLocalAssetPath(item)) : [DEFAULT_PRODUCT_IMAGE],
     basePrice: Math.max(0, Math.round(draft.basePrice)),
     originalPrice: Math.max(0, Math.round(draft.originalPrice || draft.basePrice)),
     discountStep: Math.max(0, Math.round(draft.discountStep)),

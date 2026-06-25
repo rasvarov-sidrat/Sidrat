@@ -1,11 +1,40 @@
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { BadgePercent, Users, Wallet } from 'lucide-react';
+import { BadgePercent, Store, Users, Wallet } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import HeroCarousel from '@/components/HeroCarousel';
+import { apiFetch } from '@/lib/api';
+import { fetchCmsPage } from '@/lib/cms';
 import { formatRuble, getProductCoverImage, getProductImages, loadProducts } from '@/lib/mvp';
+import type { Product } from '@/types';
 
 export default function Home() {
-  const products = loadProducts();
+  const productsQuery = useQuery({
+    queryKey: ['home-catalog'],
+    queryFn: async () => {
+      try {
+        return await apiFetch<Product[]>(`/api/v1/catalog?limit=3`);
+      } catch {
+        return loadProducts().slice(0, 3);
+      }
+    },
+  });
+  const homePageQuery = useQuery({
+    queryKey: ['cms-page-home'],
+    queryFn: async () => {
+      try {
+        return await fetchCmsPage('home');
+      } catch {
+        return null;
+      }
+    },
+  });
+  const products = productsQuery.data || loadProducts().slice(0, 3);
+  const homePage = homePageQuery.data || null;
+  const featureBlock = homePage?.blocks?.find((block) => block.blockType === 'feature_list');
+  const ctaBlock = homePage?.blocks?.find((block) => block.blockType === 'cta');
+  const featureItems = Array.isArray(featureBlock?.props?.items) ? (featureBlock?.props?.items as string[]) : null;
 
   const highlights = [
     {
@@ -31,6 +60,24 @@ export default function Home() {
         <HeroCarousel />
       </section>
 
+      <section className="rounded-3xl border border-[#2A7F6E]/15 bg-[#2A7F6E]/5 p-6 sm:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium uppercase tracking-wide text-[#2A7F6E]">Для продавцов</p>
+            <h2 className="mt-1 text-2xl font-bold text-gray-900">{ctaBlock?.title || 'Хочешь запускать GB-сессии?'}</h2>
+            <p className="mt-2 max-w-2xl text-sm text-gray-600">
+              {ctaBlock?.body || 'Подай заявку на доступ продавца, и админ вручную подтвердит твой аккаунт.'}
+            </p>
+          </div>
+          <Button asChild className="rounded-full bg-[#2A7F6E] text-white hover:bg-[#236b5d]">
+            <Link to={(ctaBlock?.ctaLink as string) || '/seller-application'}>
+              <Store className="mr-2 h-4 w-4" />
+              {(ctaBlock?.ctaText as string) || 'Подать заявку продавца'}
+            </Link>
+          </Button>
+        </div>
+      </section>
+
       <section className="grid gap-6 md:grid-cols-3">
         {highlights.map((item, index) => (
           <motion.div
@@ -48,6 +95,21 @@ export default function Home() {
           </motion.div>
         ))}
       </section>
+
+      {featureBlock ? (
+        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+          <p className="text-sm font-medium uppercase tracking-wide text-[#2A7F6E]">{featureBlock.subtitle || 'CMS-блок'}</p>
+          <h2 className="mt-1 text-2xl font-bold text-gray-900">{featureBlock.title || 'Покупайте вместе.'}</h2>
+          <p className="mt-2 max-w-3xl text-sm text-gray-600">{featureBlock.body || 'Контент теперь редактируется из админки.'}</p>
+          {featureItems?.length ? (
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {featureItems.map((item) => (
+                <div key={item} className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-700">{item}</div>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="space-y-6">
         <div className="flex items-end justify-between gap-4">

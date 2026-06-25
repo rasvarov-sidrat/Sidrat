@@ -1,13 +1,15 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { CreditCard, MapPin, PackageCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
+import { apiFetch } from '@/lib/api';
 import { confirmOrder, formatRuble, loadOrders } from '@/lib/mvp';
-import type { ShippingAddress, User } from '@/types';
+import type { Order, ShippingAddress, User } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
 import {
   COUNTRY_OPTIONS,
@@ -30,8 +32,25 @@ export default function Checkout({ user }: CheckoutProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-
-  const order = useMemo(() => loadOrders().find((item) => item.id === orderId) || null, [orderId, loading]);
+  const orderQuery = useQuery({
+    queryKey: ['order', orderId],
+    queryFn: async () => {
+      if (!orderId) {
+        throw new Error('Order ID required');
+      }
+      try {
+        return await apiFetch<Order>(`/api/v1/orders/${orderId}`);
+      } catch {
+        const localOrder = loadOrders().find((item) => item.id === orderId) || null;
+        if (!localOrder) {
+          throw new Error('Order not found');
+        }
+        return localOrder;
+      }
+    },
+    enabled: !!orderId,
+  });
+  const order = orderQuery.data || null;
   const [phoneCountryCode, setPhoneCountryCode] = useState<'RU' | 'AE' | 'MY'>('RU');
   const [phoneDigits, setPhoneDigits] = useState('');
   const [cityQuery, setCityQuery] = useState('');
@@ -111,10 +130,13 @@ export default function Checkout({ user }: CheckoutProps) {
   }, [address.country, addressQuery]);
 
   if (!order) {
+    if (orderQuery.isLoading) {
+      return <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">Загрузка заказа...</div>;
+    }
     return <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">Заказ не найден</div>;
   }
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
     try {
@@ -129,11 +151,34 @@ export default function Checkout({ user }: CheckoutProps) {
         country: address.country,
       };
 
-      confirmOrder(order.id, shippingAddress);
+      await apiFetch<Order>(`/api/v1/orders/${order.id}/confirm`, {
+        method: 'POST',
+        body: JSON.stringify({ shippingAddress }),
+      });
+      if (loadOrders().some((item) => item.id === order.id)) {
+        confirmOrder(order.id, shippingAddress);
+      }
       navigate(`/order-success/${order.id}`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Не удалось подтвердить заказ';
-      toast({ title: 'Ошибка', description: message, variant: 'destructive' });
+      try {
+        const normalizedPhone = buildPhonePreview(phoneCountryCode, phoneDigits);
+        const shippingAddress: ShippingAddress = {
+          ...address,
+          fullName: address.fullName.trim(),
+          phone: normalizedPhone,
+          address: address.address.trim(),
+          city: address.city.trim(),
+          postalCode: address.postalCode.trim(),
+          country: address.country,
+        };
+        confirmOrder(order.id, shippingAddress);
+        navigate(`/order-success/${order.id}`);
+        return;
+      } catch (fallbackError) {
+        const message = fallbackError instanceof Error ? fallbackError.message : error instanceof Error ? error.message : 'Не удалось подтвердить заказ';
+        toast({ title: 'Ошибка', description: message, variant: 'destructive' });
+      }
+    } finally {
       setLoading(false);
     }
   };

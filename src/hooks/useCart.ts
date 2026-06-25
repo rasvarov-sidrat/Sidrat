@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CartItem } from '@/types';
+import { apiFetch } from '@/lib/api';
 
 interface CartData {
   items: CartItem[];
@@ -15,40 +16,32 @@ export const useCart = (sessionId?: string) => {
     queryKey,
     queryFn: async () => {
       if (!sessionId) return { items: [], totalUnits: 0, totalOriginal: 0, totalDiscounted: 0 };
-      const response = await fetch(`/api/sessions/${sessionId}/cart`);
-      if (!response.ok) throw new Error('Failed to fetch cart');
-      return response.json();
+      return apiFetch<CartData>(`/api/v1/sessions/${sessionId}/cart`);
     },
     enabled: !!sessionId,
   });
 
   const addItem = useMutation({
     mutationFn: async (item: CartItem) => {
-      const response = await fetch(`/api/sessions/${sessionId}/cart/items`, {
+      return apiFetch<CartData>(`/api/v1/sessions/${sessionId}/cart/items`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(item),
       });
-      if (!response.ok) throw new Error('Failed to add item');
-      return response.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
   const updateQuantity = useMutation({
     mutationFn: async ({ itemId, quantity }: { itemId: string; quantity: number }) => {
-      const response = await fetch(`/api/sessions/${sessionId}/cart/items/${itemId}`, {
+      return apiFetch<CartData>(`/api/v1/sessions/${sessionId}/cart/items/${itemId}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantity }),
       });
-      if (!response.ok) throw new Error('Failed to update quantity');
-      return response.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
   const removeItem = useMutation({
     mutationFn: async (itemId: string) => {
-      const response = await fetch(`/api/sessions/${sessionId}/cart/items/${itemId}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('Failed to remove item');
-      return response.json();
+      return apiFetch<CartData>(`/api/v1/sessions/${sessionId}/cart/items/${itemId}`, { method: 'DELETE' });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Clock3, Copy, Layers3, MessageCircle, Send, ShieldCheck, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,19 +7,18 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
+import { apiFetch, resolveBackendUserId } from '@/lib/api';
+import { isVerifiedUser } from '@/lib/auth';
 import {
   findProductFamily,
-  findPendingSessionOrder,
   findSession,
   formatRuble,
-  getProductCoverImage,
   getSessionFillPercent,
   getSessionPriceOverview,
   getSessionPriceTable,
-  getSessionVariantOptions,
   joinSession,
 } from '@/lib/mvp';
-import type { User } from '@/types';
+import type { Order, Product, Session, User } from '@/types';
 
 interface SessionDetailProps {
   user: User | null;
@@ -87,13 +86,85 @@ function getPriceTextStyle(value: number) {
 
 export default function SessionDetail({ user }: SessionDetailProps) {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const [selectedVariantId, setSelectedVariantId] = useState('');
+  const routeSession = (location.state as { session?: Session } | null)?.session ?? null;
+  const localSession = id ? findSession(id) : null;
+  const [session, setSession] = useState<Session | null>(routeSession ?? localSession);
+  const [family, setFamily] = useState<Product | null>(() => {
+    const source = routeSession ?? localSession;
+    return source ? findProductFamily(source.familyId) : null;
+  });
+  const [loadingRemote, setLoadingRemote] = useState(!routeSession && !localSession);
 
-  const session = useMemo(() => findSession(id || ''), [id]);
-  const family = useMemo(() => (session ? findProductFamily(session.familyId) : null), [session]);
+  useEffect(() => {
+    let alive = true;
+    setLoadingRemote(true);
+
+    const hydrate = async () => {
+      if (!id) {
+        if (alive) {
+          setSession(null);
+          setFamily(null);
+          setLoadingRemote(false);
+        }
+        return;
+      }
+
+      const fallbackSession = routeSession ?? localSession ?? findSession(id);
+      const fallbackFamily = fallbackSession ? findProductFamily(fallbackSession.familyId) : null;
+
+      if (fallbackSession) {
+        setSession(fallbackSession);
+      }
+      if (fallbackFamily) {
+        setFamily(fallbackFamily);
+      }
+
+      try {
+        const remoteSession = await apiFetch<Session>(`/api/v1/sessions/${id}`);
+        if (!alive) return;
+        setSession(remoteSession);
+
+        if (remoteSession.familySlug) {
+          try {
+            const remoteFamily = await apiFetch<Product>(`/api/v1/products/${remoteSession.familySlug}`);
+            if (!alive) return;
+            setFamily(remoteFamily);
+          } catch {
+            if (!alive) return;
+            const localRemoteFamily = findProductFamily(remoteSession.familyId);
+            setFamily(localRemoteFamily);
+          }
+        }
+      } catch {
+        if (!alive) return;
+        setSession((current) => current ?? fallbackSession);
+        setFamily((current) => current ?? fallbackFamily);
+      } finally {
+        if (alive) setLoadingRemote(false);
+      }
+    };
+
+    void hydrate();
+
+    return () => {
+      alive = false;
+    };
+  }, [id]);
+
+  if (loadingRemote && !session && !family) {
+    return (
+      <Card className="mx-auto max-w-xl">
+        <CardContent className="p-8 text-center">
+          <p className="text-gray-600">Загружаем сессию...</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!session || !family) {
     return (
@@ -108,7 +179,11 @@ export default function SessionDetail({ user }: SessionDetailProps) {
     );
   }
 
-  const variantOptions = getSessionVariantOptions(session);
+  const variantOptions = family.variants.filter((variant) => {
+    const sizeAllowed = session.allowedSizes.length === 0 || session.allowedSizes.includes(variant.size);
+    const colorAllowed = session.allowedColors.length === 0 || session.allowedColors.includes(variant.color);
+    return variant.isAllowedInGb && sizeAllowed && colorAllowed;
+  });
   const priceTable = getSessionPriceTable(session);
   const priceOverview = getSessionPriceOverview(session);
   const currentVariant = variantOptions.find((variant) => variant.id === selectedVariantId) || variantOptions[0];
@@ -123,17 +198,15 @@ export default function SessionDetail({ user }: SessionDetailProps) {
   const shareMessage = `${shareText}\n${shareUrl}`;
   const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
   const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
-  const pendingOrder = user ? findPendingSessionOrder(user.id, session.id) : null;
-  const pendingParticipation = pendingOrder ? session.participants.find((participant) => participant.id === pendingOrder.participationId) || null : null;
-  const pendingStepLabel = pendingParticipation ? `Незавершённая оплата: слот #${pendingParticipation.slotNumber}` : 'Незавершённая оплата';
 
   useEffect(() => {
     if (!variantOptions.length) {
       return;
     }
 
+    const backendUserId = resolveBackendUserId(user?.id);
     const participantVariantId = user
-      ? session.participants.find((participant) => participant.userId === user.id)?.variantId
+      ? session.participants.find((participant) => participant.userId === backendUserId)?.variantId
       : '';
     const preferredVariantId = participantVariantId && variantOptions.some((variant) => variant.id === participantVariantId)
       ? participantVariantId
@@ -151,13 +224,9 @@ export default function SessionDetail({ user }: SessionDetailProps) {
     setTimeout(() => setCopied(false), 1500);
   };
 
-  const handleJoin = () => {
-    if (!user) {
-      navigate('/login', { state: { from: { pathname: `/session/${session.id}` } } });
-      return;
-    }
-    if (pendingOrder) {
-      navigate(`/checkout/${pendingOrder.id}`);
+  const handleJoin = async () => {
+    if (!user || !isVerifiedUser(user)) {
+      navigate('/register', { state: { from: { pathname: `/session/${session.id}` } } });
       return;
     }
     if (!currentVariant) {
@@ -170,28 +239,39 @@ export default function SessionDetail({ user }: SessionDetailProps) {
     }
 
     try {
-      const result = joinSession({
-        sessionId: session.id,
-        user,
-        variantId: currentVariant.id,
-        walletSpend: 0,
+      const result = await apiFetch<{ order: Order }>(`/api/v1/sessions/${session.id}/join`, {
+        method: 'POST',
+        body: JSON.stringify({
+          variantId: currentVariant.id,
+          walletSpend: 0,
+        }),
       });
       toast({
         title: 'Слот занят',
-        description: `Оплачено ${formatRuble(result.participation.pricePaid)}. ${result.refundDelta > 0 ? `Возврат в кошелёк: ${formatRuble(result.refundDelta)}` : 'Без возврата.'}`,
+        description: `Создан заказ #${result.order.id}.`,
       });
       navigate(`/checkout/${result.order.id}`);
     } catch (error) {
-      if (error instanceof Error && 'code' in error && (error as { code?: string }).code === 'pending_payment' && pendingOrder) {
-        navigate(`/checkout/${pendingOrder.id}`);
-        return;
+      try {
+        const fallbackResult = joinSession({
+          sessionId: session.id,
+          user: user as User,
+          variantId: currentVariant.id,
+          walletSpend: 0,
+        });
+        toast({
+          title: 'Слот занят',
+          description: `Создан заказ #${fallbackResult.order.id}.`,
+        });
+        navigate(`/checkout/${fallbackResult.order.id}`);
+      } catch (fallbackError) {
+        const message = fallbackError instanceof Error ? fallbackError.message : error instanceof Error ? error.message : 'Не удалось присоединиться';
+        toast({ title: 'Ошибка', description: message, variant: 'destructive' });
       }
-      const message = error instanceof Error ? error.message : 'Не удалось присоединиться';
-      toast({ title: 'Ошибка', description: message, variant: 'destructive' });
     }
   };
 
-  const nextSlotNumber = pendingParticipation ? pendingParticipation.slotNumber : session.currentSlots + 1;
+  const nextSlotNumber = session.currentSlots + 1;
 
   return (
     <div className="space-y-6">
@@ -220,10 +300,10 @@ export default function SessionDetail({ user }: SessionDetailProps) {
             <Button
               className="bg-[#2A7F6E] text-white hover:bg-[#236b5d]"
               onClick={handleJoin}
-              disabled={!pendingOrder && (session.status !== 'active' || !variantOptions.length)}
+              disabled={session.status !== 'active' || !variantOptions.length}
             >
               <Users className="mr-2 h-4 w-4" />
-              {pendingOrder ? 'Продолжить оплату' : user ? 'Занять слот' : 'Войти и занять слот'}
+              {user ? 'Занять слот' : 'Войти и занять слот'}
             </Button>
           </div>
         </div>
@@ -233,7 +313,7 @@ export default function SessionDetail({ user }: SessionDetailProps) {
         <Card className="overflow-hidden">
           <CardContent className="grid gap-0 p-0 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
             <div className="relative min-h-[260px] overflow-hidden bg-gradient-to-br from-gray-50 via-white to-[#C5A059]/10">
-              <img src={getProductCoverImage(family)} alt={family.name} className="h-full min-h-[260px] w-full object-cover" />
+              <img src={family.image} alt={family.name} className="h-full min-h-[260px] w-full object-cover" />
               <div className="absolute left-4 top-4 flex flex-wrap gap-2">
                 <Badge variant="secondary" className="rounded-full bg-white/90 text-gray-700 shadow-sm">
                   {family.name}
@@ -361,15 +441,6 @@ export default function SessionDetail({ user }: SessionDetailProps) {
               </p>
             </div>
 
-            {pendingOrder ? (
-              <div className="rounded-2xl border border-[#C5A059]/25 bg-[#C5A059]/10 p-4 text-sm text-[#6f541b]">
-                <p className="font-medium">Слот уже забронирован, но оплата не завершена.</p>
-                <p className="mt-1">
-                  {pendingStepLabel}. Открой checkout и заверши оплату, прежде чем занимать следующий слот.
-                </p>
-              </div>
-            ) : null}
-
             {!user ? (
               <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-4 text-sm text-gray-600">
                 Войдите, чтобы быстрее перейти к оплате после выбора слота.
@@ -379,7 +450,7 @@ export default function SessionDetail({ user }: SessionDetailProps) {
             <div className="rounded-2xl bg-[#2A7F6E]/5 p-4 text-sm text-gray-600">
               <p className="font-medium text-gray-900">Что произойдёт дальше</p>
               <p className="mt-2">
-                Нажмите на слот ниже, слот бронируется, создаётся заказ, и вы сразу попадаете на checkout с реальным `orderId`.
+                  Нажмите на слот ниже, слот бронируется на сервере, создаётся заказ, и вы сразу попадаете на checkout с реальным `orderId`.
               </p>
             </div>
           </CardContent>
@@ -400,38 +471,37 @@ export default function SessionDetail({ user }: SessionDetailProps) {
 
           <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
             {priceTable.map((row) => {
-              const isFilled = row.slotNumber <= session.currentSlots && !pendingParticipation;
-              const isReserved = pendingParticipation?.slotNumber === row.slotNumber;
-              const isNext = !pendingParticipation && row.slotNumber === nextSlotNumber;
+              const isFilled = row.slotNumber <= session.currentSlots;
+              const isNext = row.slotNumber === nextSlotNumber;
               return (
                 <div
                   key={row.slotNumber}
                   className={`min-w-[240px] flex-none rounded-2xl border p-4 ${
-                    isReserved ? 'border-[#2A7F6E] bg-[#2A7F6E]/5' : isNext ? 'border-[#2A7F6E] bg-[#2A7F6E]/5' : 'border-gray-200 bg-gray-50'
+                    isFilled ? 'border-[#2A7F6E] bg-[#2A7F6E]/5' : isNext ? 'border-[#2A7F6E] bg-[#2A7F6E]/5' : 'border-gray-200 bg-gray-50'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-medium text-gray-900">Слот #{row.slotNumber}</p>
                       <p className={`text-xs ${isFilled ? 'text-gray-500' : 'text-[#8b6a2f]'}`}>
-                        {isReserved ? 'Ожидает оплату' : isFilled ? 'Уже занят' : isNext ? 'Доступен сейчас' : 'Откроется позже'}
+                      {isFilled ? 'Уже занят' : isNext ? 'Доступен сейчас' : 'Откроется позже'}
                       </p>
                     </div>
                     <p className={`text-sm font-semibold ${isFilled ? 'text-gray-700' : 'text-[#C5A059]'}`}>
-                      {formatRuble(row.price)}
+                    {formatRuble(row.price)}
                     </p>
                   </div>
                   <Button
                     type="button"
                     className={`mt-4 w-full ${
-                      isReserved || (isNext && session.status === 'active')
+                    isNext && session.status === 'active'
                         ? 'bg-[#2A7F6E] text-white hover:bg-[#236b5d]'
                         : 'bg-gray-200 text-gray-500 hover:bg-gray-200'
                     }`}
                     onClick={handleJoin}
-                    disabled={pendingOrder ? !isReserved : session.status !== 'active' || !isNext}
+                    disabled={session.status !== 'active' || !isNext}
                   >
-                    {isReserved ? 'Продолжить оплату' : isFilled ? 'Занято' : isNext ? 'Занять и оплатить' : pendingParticipation ? 'Заблокировано' : 'Недоступно'}
+                    {isFilled ? 'Занято' : isNext ? 'Занять и оплатить' : 'Недоступно'}
                   </Button>
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <Button asChild variant="outline" size="sm" className="w-full border-[#25D366] text-[#128C7E] hover:bg-[#25D366]/10">
@@ -468,7 +538,7 @@ export default function SessionDetail({ user }: SessionDetailProps) {
             </div>
 
             <div className="mt-5 grid gap-4 md:grid-cols-[160px_minmax(0,1fr)]">
-              <img src={getProductCoverImage(family)} alt={family.name} className="h-40 w-full rounded-2xl object-cover" />
+              <img src={family.image} alt={family.name} className="h-40 w-full rounded-2xl object-cover" />
               <div className="space-y-4">
                 <p className="leading-6 text-gray-700">{family.description}</p>
 
