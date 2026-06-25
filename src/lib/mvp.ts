@@ -186,7 +186,7 @@ export const demoProducts: Product[] = [
     id: 'family-nike-air-max',
     slug: 'nike-air-max-2024',
     name: 'Nike Air Max 2024',
-    description: 'Р“РёР±РєР°СЏ GB-СЃРµСЃСЃРёСЏ РЅР° РѕРґРЅСѓ РјРѕРґРµР»СЊ СЃ РґРѕСЃС‚СѓРїРЅС‹РјРё СЂР°Р·РјРµСЂР°РјРё Рё С†РІРµС‚Р°РјРё.',
+    description: 'Гибкая GB-сессия на одну модель с доступными размерами и цветами.',
     category: 'footwear',
     image: '/assets/products/nike-air-max-2024/cover.svg',
     images: [
@@ -209,16 +209,16 @@ export const demoProducts: Product[] = [
       { id: 'nike-42-white', familyId: 'family-nike-air-max', size: '42', color: 'White', sku: 'NAM-42-WHT', stock: 4, image: '/assets/products/nike-air-max-2024/alt-1.svg', isAllowedInGb: true },
     ],
     specs: {
-      'Р Р°Р·РјРµСЂС‹': '41-44',
-      'Р¦РІРµС‚Р°': 'Black / White',
-      'РЎРєРёРґРєР°': '5% Р·Р° СЃР»РѕС‚',
+      'Размеры': '41-44',
+      'Цвета': 'Black / White',
+      'Скидка': '5% за слот',
     },
   },
   {
     id: 'family-oxford-shirt',
     slug: 'oxford-shirt',
     name: 'Oxford Classic Shirt',
-    description: 'Р СѓР±Р°С€РєР° СЃ РіРёР±РєРѕР№ РІР°СЂРёР°С‚РёРІРЅРѕСЃС‚СЊСЋ РїРѕ С†РІРµС‚Сѓ Рё СЂР°Р·РјРµСЂР°Рј РІ СЂР°РјРєР°С… РѕРґРЅРѕР№ GB-СЃРµСЃСЃРёРё.',
+    description: 'Рубашка с гибкой вариативностью по цвету и размерам в рамках одной GB-сессии.',
     category: 'apparel',
     image: '/assets/products/oxford-shirt/cover.svg',
     images: [
@@ -238,16 +238,16 @@ export const demoProducts: Product[] = [
       { id: 'shirt-l-white', familyId: 'family-oxford-shirt', size: 'L', color: 'White', sku: 'OX-L-WHT', stock: 5, image: '/assets/products/oxford-shirt/alt-1.svg', isAllowedInGb: true },
     ],
     specs: {
-      'Р Р°Р·РјРµСЂС‹': 'S-XL',
-      'Р¦РІРµС‚Р°': 'Blue / White',
-      'РЎРєРёРґРєР°': '10% Р·Р° СЃР»РѕС‚',
+      'Размеры': 'S-XL',
+      'Цвета': 'Blue / White',
+      'Скидка': '10% за слот',
     },
   },
   {
     id: 'family-sony-headphones',
     slug: 'sony-wh-1000xm5',
     name: 'Sony WH-1000XM5',
-    description: 'РђСѓРґРёРѕ-family СЃ РґРІСѓРјСЏ С†РІРµС‚РѕРІС‹РјРё РІР°СЂРёР°РЅС‚Р°РјРё РІРЅСѓС‚СЂРё РѕРґРЅРѕР№ GB-СЃРµСЃСЃРёРё.',
+    description: 'Аудио-family с двумя цветовыми вариантами внутри одной GB-сессии.',
     category: 'audio',
     image: '/assets/products/sony-wh-1000xm5/cover.svg',
     images: [
@@ -265,21 +265,21 @@ export const demoProducts: Product[] = [
       { id: 'sony-silver', familyId: 'family-sony-headphones', size: 'One size', color: 'Silver', sku: 'SONY-SLV', stock: 8, image: '/assets/products/sony-wh-1000xm5/cover.svg', isAllowedInGb: true },
     ],
     specs: {
-      'Р¦РІРµС‚Р°': 'Black / Silver',
-      'РЎРєРёРґРєР°': '5% Р·Р° СЃР»РѕС‚',
-      'РЎРµРјРµР№СЃС‚РІРѕ': '1 РјРѕРґРµР»СЊ',
+      'Цвета': 'Black / Silver',
+      'Скидка': '5% за слот',
+      'Семейство': '1 модель',
     },
   },
   {
     id: 'family-lg-fridge',
     slug: 'lg-instaview-fridge',
     name: 'LG InstaView Refrigerator',
-    description: 'РҐРѕР»РѕРґРёР»СЊРЅРёРє СЃ РїСЂРµРјРёР°Р»СЊРЅРѕР№ СЃС‚РµРєР»СЏРЅРЅРѕР№ РґРІРµСЂСЊСЋ Рё Р±РѕР»СЊС€РёРј РѕР±СЉС‘РјРѕРј РґР»СЏ СЃРµРјРµР№РЅРѕР№ РєСѓС…РЅРё.',
+    description: 'Холодильник с премиальной стеклянной дверью и большим объёмом для семейной кухни.',
     category: 'electronics',
     categorySlug: buildCatalogProductSlug(
       'electronics',
-      slugifyCatalogSegment('РљСЂСѓРїРЅР°СЏ Р±С‹С‚РѕРІР°СЏ С‚РµС…РЅРёРєР°'),
-      slugifyCatalogSegment('РҐРѕР»РѕРґРёР»СЊРЅРёРєРё'),
+      slugifyCatalogSegment('Крупная бытовая техника'),
+      slugifyCatalogSegment('Холодильники'),
     ),
     image: '/assets/products/lg-instaview-fridge/cover.svg',
     images: [
@@ -298,22 +298,22 @@ export const demoProducts: Product[] = [
       { id: 'lg-fridge-black', familyId: 'family-lg-fridge', size: 'One size', color: 'Black', sku: 'LG-FR-BLK', stock: 2, image: '/assets/products/lg-instaview-fridge/alt-1.svg', isAllowedInGb: true },
     ],
     specs: {
-      'РљР°С‚РµРіРѕСЂРёСЏ': 'РљСЂСѓРїРЅР°СЏ Р±С‹С‚РѕРІР°СЏ С‚РµС…РЅРёРєР°',
-      'РўРёРї': 'РҐРѕР»РѕРґРёР»СЊРЅРёРє',
-      'Р¦РІРµС‚Р°': 'Silver / Black',
-      'РЎРєРёРґРєР°': '2500 ₽ Р·Р° СЃР»РѕС‚',
+      'Категория': 'Крупная бытовая техника',
+      'Тип': 'Холодильник',
+      'Цвета': 'Silver / Black',
+      'Скидка': '2500 ₽ Р·Р° СЃР»РѕС‚',
     },
   },
   {
     id: 'family-bosch-washer',
     slug: 'bosch-serie-6-washing-machine',
     name: 'Bosch Serie 6 Washing Machine',
-    description: 'РўРёС…Р°СЏ СЃС‚РёСЂР°Р»СЊРЅР°СЏ РјР°С€РёРЅР° РґР»СЏ РµР¶РµРґРЅРµРІРЅРѕР№ Р·Р°РіСЂСѓР·РєРё Рё СЌРєРѕРЅРѕРјРЅРѕРіРѕ СЂР°СЃС…РѕРґР° РІРѕРґС‹.',
+    description: 'Тихая стиральная машина для ежедневной загрузки и экономного расхода воды.',
     category: 'electronics',
     categorySlug: buildCatalogProductSlug(
       'electronics',
-      slugifyCatalogSegment('РљСЂСѓРїРЅР°СЏ Р±С‹С‚РѕРІР°СЏ С‚РµС…РЅРёРєР°'),
-      slugifyCatalogSegment('РЎС‚РёСЂР°Р»СЊРЅС‹Рµ РјР°С€РёРЅС‹'),
+      slugifyCatalogSegment('Крупная бытовая техника'),
+      slugifyCatalogSegment('Стиральные машины'),
     ),
     image: '/assets/products/bosch-serie-6-washing-machine/cover.svg',
     images: [
@@ -330,21 +330,21 @@ export const demoProducts: Product[] = [
       { id: 'bosch-washer-white', familyId: 'family-bosch-washer', size: 'One size', color: 'White', sku: 'BSH-W-001', stock: 4, image: '/assets/products/bosch-serie-6-washing-machine/cover.svg', isAllowedInGb: true },
     ],
     specs: {
-      'РљР°С‚РµРіРѕСЂРёСЏ': 'РљСЂСѓРїРЅР°СЏ Р±С‹С‚РѕРІР°СЏ С‚РµС…РЅРёРєР°',
-      'РўРёРї': 'РЎС‚РёСЂР°Р»СЊРЅР°СЏ РјР°С€РёРЅР°',
-      'РљР»Р°СЃСЃ': 'A+++',
+      'Категория': 'Крупная бытовая техника',
+      'Тип': 'Стиральная машина',
+      'Класс': 'A+++',
     },
   },
   {
     id: 'family-delonghi-coffee',
     slug: 'delonghi-dinamica-coffee-machine',
     name: 'DeLonghi Dinamica',
-    description: 'РљРѕС„РµРјР°С€РёРЅР° РґР»СЏ СЌСЃРїСЂРµСЃСЃРѕ, РєР°РїСѓС‡РёРЅРѕ Рё РїРѕРІСЃРµРґРЅРµРІРЅРѕРіРѕ РєРѕС„Рµ РґРѕРјР°.',
+    description: 'Кофемашина для эспрессо, капучино и повседневного кофе дома.',
     category: 'electronics',
     categorySlug: buildCatalogProductSlug(
       'electronics',
-      slugifyCatalogSegment('РўРµС…РЅРёРєР° РґР»СЏ РєСѓС…РЅРё'),
-      slugifyCatalogSegment('РљРѕС„РµРІР°СЂРєРё Рё РєРѕС„РµРјР°С€РёРЅС‹'),
+      slugifyCatalogSegment('Техника для кухни'),
+      slugifyCatalogSegment('Кофеварки и кофемашины'),
     ),
     image: '/assets/products/delonghi-dinamica-coffee-machine/cover.svg',
     images: [
@@ -362,21 +362,21 @@ export const demoProducts: Product[] = [
       { id: 'delonghi-silver', familyId: 'family-delonghi-coffee', size: 'One size', color: 'Silver', sku: 'DEL-CF-SLV', stock: 4, image: '/assets/products/delonghi-dinamica-coffee-machine/cover.svg', isAllowedInGb: true },
     ],
     specs: {
-      'РљР°С‚РµРіРѕСЂРёСЏ': 'РўРµС…РЅРёРєР° РґР»СЏ РєСѓС…РЅРё',
-      'РўРёРї': 'РљРѕС„РµРјР°С€РёРЅР°',
-      'РќР°РїРёС‚РєРё': 'Espresso / Cappuccino',
+      'Категория': 'Техника для кухни',
+      'Тип': 'Кофемашина',
+      'Напитки': 'Espresso / Cappuccino',
     },
   },
   {
     id: 'family-daikin-ac',
     slug: 'daikin-split-system',
     name: 'Daikin Split System',
-    description: 'РўРёС…Р°СЏ СЃРїР»РёС‚-СЃРёСЃС‚РµРјР° РґР»СЏ СЃС‚Р°Р±РёР»СЊРЅРѕРіРѕ РєР»РёРјР°С‚Р° РІ РєРѕРјРЅР°С‚Рµ РёР»Рё РѕС„РёСЃРµ.',
+    description: 'Тихая сплит-система для стабильного климата в комнате или офисе.',
     category: 'electronics',
     categorySlug: buildCatalogProductSlug(
       'electronics',
-      slugifyCatalogSegment('РљР»РёРјР°С‚РёС‡РµСЃРєР°СЏ С‚РµС…РЅРёРєР°'),
-      slugifyCatalogSegment('РљРѕРЅРґРёС†РёРѕРЅРµСЂС‹ Рё СЃРїР»РёС‚-СЃРёСЃС‚РµРјС‹'),
+      slugifyCatalogSegment('Климатическая техника'),
+      slugifyCatalogSegment('Кондиционеры и сплит-системы'),
     ),
     image: '/assets/products/daikin-split-system/cover.svg',
     images: [
@@ -393,21 +393,21 @@ export const demoProducts: Product[] = [
       { id: 'daikin-white', familyId: 'family-daikin-ac', size: 'One size', color: 'White', sku: 'DAI-AC-WHT', stock: 6, image: '/assets/products/daikin-split-system/cover.svg', isAllowedInGb: true },
     ],
     specs: {
-      'РљР°С‚РµРіРѕСЂРёСЏ': 'РљР»РёРјР°С‚РёС‡РµСЃРєР°СЏ С‚РµС…РЅРёРєР°',
-      'РўРёРї': 'РЎРїР»РёС‚-СЃРёСЃС‚РµРјР°',
-      'Р РµР¶РёРј': 'Cooling / Heating',
+      'Категория': 'Климатическая техника',
+      'Тип': 'Сплит-система',
+      'Режим': 'Cooling / Heating',
     },
   },
   {
     id: 'family-iphone-15-pro',
     slug: 'iphone-15-pro-max',
     name: 'iPhone 15 Pro Max',
-    description: 'Р¤Р»Р°РіРјР°РЅСЃРєРёР№ СЃРјР°СЂС‚С„РѕРЅ РґР»СЏ С‚РµС…, РєРѕРјСѓ РЅСѓР¶РЅР° РєР°РјРµСЂР°, СЃРєРѕСЂРѕСЃС‚СЊ Рё Р·Р°РїР°СЃ РїРѕ РїР°РјСЏС‚Рё.',
+    description: 'Флагманский смартфон для тех, кому нужна камера, скорость и запас по памяти.',
     category: 'electronics',
     categorySlug: buildCatalogProductSlug(
       'electronics',
-      slugifyCatalogSegment('РЎРјР°СЂС‚С„РѕРЅС‹'),
-      slugifyCatalogSegment('РЎРјР°СЂС‚С„РѕРЅС‹'),
+      slugifyCatalogSegment('Смартфоны'),
+      slugifyCatalogSegment('Смартфоны'),
     ),
     image: '/assets/products/iphone-15-pro-max/cover.svg',
     images: [
@@ -426,21 +426,21 @@ export const demoProducts: Product[] = [
       { id: 'iphone-512-black', familyId: 'family-iphone-15-pro', size: '512 GB', color: 'Black Titanium', sku: 'IP15P-512-BLK', stock: 5, image: '/assets/products/iphone-15-pro-max/alt-1.svg', isAllowedInGb: true },
     ],
     specs: {
-      'РљР°С‚РµРіРѕСЂРёСЏ': 'РЎРјР°СЂС‚С„РѕРЅС‹',
-      'РџР°РјСЏС‚СЊ': '256 / 512 GB',
-      'Р§РёРї': 'A17 Pro',
+      'Категория': 'Смартфоны',
+      'Память': '256 / 512 GB',
+      'Чип': 'A17 Pro',
     },
   },
   {
     id: 'family-galaxy-watch',
     slug: 'samsung-galaxy-watch',
     name: 'Samsung Galaxy Watch',
-    description: 'РЎРјР°СЂС‚-С‡Р°СЃС‹ РґР»СЏ СЃРїРѕСЂС‚Р°, СѓРІРµРґРѕРјР»РµРЅРёР№ Рё РєРѕРЅС‚СЂРѕР»СЏ Р·РґРѕСЂРѕРІСЊСЏ.',
+    description: 'Смарт-часы для спорта, уведомлений и контроля здоровья.',
     category: 'electronics',
     categorySlug: buildCatalogProductSlug(
       'electronics',
-      slugifyCatalogSegment('РЎРјР°СЂС‚-С‡Р°СЃС‹'),
-      slugifyCatalogSegment('РЎРјР°СЂС‚-С‡Р°СЃС‹'),
+      slugifyCatalogSegment('Смарт-часы'),
+      slugifyCatalogSegment('Смарт-часы'),
     ),
     image: '/assets/products/samsung-galaxy-watch/cover.svg',
     images: [
@@ -458,21 +458,21 @@ export const demoProducts: Product[] = [
       { id: 'watch-silver', familyId: 'family-galaxy-watch', size: 'One size', color: 'Silver', sku: 'GW-SLV', stock: 6, image: '/assets/products/samsung-galaxy-watch/cover.svg', isAllowedInGb: true },
     ],
     specs: {
-      'РљР°С‚РµРіРѕСЂРёСЏ': 'РќРѕСЃРёРјР°СЏ СЌР»РµРєС‚СЂРѕРЅРёРєР°',
-      'РўРёРї': 'РЎРјР°СЂС‚-С‡Р°СЃС‹',
-      'Р¤СѓРЅРєС†РёРё': 'РЎРїРѕСЂС‚ / Р·РґРѕСЂРѕРІСЊРµ / СѓРІРµРґРѕРјР»РµРЅРёСЏ',
+      'Категория': 'Носимая электроника',
+      'Тип': 'Смарт-часы',
+      'Функции': 'Спорт / здоровье / уведомления',
     },
   },
   {
     id: 'family-anker-cable',
     slug: 'anker-usb-c-cable',
     name: 'Anker USB-C Cable',
-    description: 'РљР°Р±РµР»СЊ РґР»СЏ СЃРјР°СЂС‚С„РѕРЅРѕРІ Рё РїРѕРІСЃРµРґРЅРµРІРЅРѕР№ Р·Р°СЂСЏРґРєРё Р±РµР· Р»РёС€РЅРµРіРѕ С€СѓРјР°.',
+    description: 'Кабель для смартфонов и повседневной зарядки без лишнего шума.',
     category: 'electronics',
     categorySlug: buildCatalogProductSlug(
       'electronics',
-      slugifyCatalogSegment('Р’СЃС‘ РґР»СЏ СЃРјР°СЂС‚С„РѕРЅРѕРІ Рё С‚РµР»РµС„РѕРЅРѕРІ'),
-      slugifyCatalogSegment('РљР°Р±РµР»Рё РґР»СЏ СЃРјР°СЂС‚С„РѕРЅРѕРІ'),
+      slugifyCatalogSegment('Всё для смартфонов и телефонов'),
+      slugifyCatalogSegment('Кабели для смартфонов'),
     ),
     image: '/assets/products/anker-usb-c-cable/cover.svg',
     images: [
@@ -490,9 +490,9 @@ export const demoProducts: Product[] = [
       { id: 'anker-2m', familyId: 'family-anker-cable', size: '2 m', color: 'Black', sku: 'ANK-CBL-2M', stock: 25, image: '/assets/products/anker-usb-c-cable/cover.svg', isAllowedInGb: true },
     ],
     specs: {
-      'РљР°С‚РµРіРѕСЂРёСЏ': 'РђРєСЃРµСЃСЃСѓР°СЂС‹',
-      'РўРёРї': 'USB-C РєР°Р±РµР»СЊ',
-      'Р”Р»РёРЅР°': '1 / 2 Рј',
+      'Категория': 'Аксессуары',
+      'Тип': 'USB-C кабель',
+      'Длина': '1 / 2 м',
     },
   },
 ];
@@ -515,11 +515,11 @@ const demoOrders: Order[] = [
     shippingAddress: {
       fullName: 'Demo Buyer',
       phone: '+7 900 000 00 01',
-      address: 'СѓР». РўРІРµСЂСЃРєР°СЏ, 1',
-      city: 'РњРѕСЃРєРІР°',
-      region: 'РњРѕСЃРєРІР°',
+      address: 'ул. Тверская, 1',
+      city: 'Москва',
+      region: 'Москва',
       postalCode: '125009',
-      country: 'Р РѕСЃСЃРёР№СЃРєР°СЏ Р¤РµРґРµСЂР°С†РёСЏ',
+      country: 'Российская Федерация',
     },
   },
   {
@@ -537,11 +537,11 @@ const demoOrders: Order[] = [
     shippingAddress: {
       fullName: 'Demo Buyer',
       phone: '+7 900 000 00 02',
-      address: 'РќРµРІСЃРєРёР№ РїСЂРѕСЃРїРµРєС‚, 10',
-      city: 'РЎР°РЅРєС‚-РџРµС‚РµСЂР±СѓСЂРі',
-      region: 'РЎР°РЅРєС‚-РџРµС‚РµСЂР±СѓСЂРі',
+      address: 'Невский проспект, 10',
+      city: 'Санкт-Петербург',
+      region: 'Санкт-Петербург',
       postalCode: '191186',
-      country: 'Р РѕСЃСЃРёР№СЃРєР°СЏ Р¤РµРґРµСЂР°С†РёСЏ',
+      country: 'Российская Федерация',
     },
   },
   {
@@ -558,11 +558,11 @@ const demoOrders: Order[] = [
     shippingAddress: {
       fullName: 'Demo Buyer',
       phone: '+7 900 000 00 03',
-      address: 'СѓР». Р‘Р°СѓРјР°РЅР°, 7',
-      city: 'РљР°Р·Р°РЅСЊ',
-      region: 'РўР°С‚Р°СЂСЃС‚Р°РЅ',
+      address: 'ул. Баумана, 7',
+      city: 'Казань',
+      region: 'Татарстан',
       postalCode: '420111',
-      country: 'Р РѕСЃСЃРёР№СЃРєР°СЏ Р¤РµРґРµСЂР°С†РёСЏ',
+      country: 'Российская Федерация',
     },
   },
 ];
@@ -829,8 +829,8 @@ export function createCartOrder(input: {
   const order: Order = {
     id: id('order'),
     userId: input.user.id,
-    familyName: singleLineProduct?.name ?? 'РљРѕСЂР·РёРЅР° SIDRAT',
-    variantLabel: extraCount > 0 ? `${summary} Рё РµС‰С‘ ${extraCount} С‚РѕРІР°СЂР°` : summary,
+    familyName: singleLineProduct?.name ?? 'Корзина SIDRAT',
+    variantLabel: extraCount > 0 ? `${summary} и ещё ${extraCount} товара` : summary,
     totalAmount: subtotal,
     walletDeduction: Math.max(0, input.walletDeduction || 0),
     status: 'created',
@@ -1121,7 +1121,7 @@ export function joinSession(input: {
     }
     const balance = users[userIndex].walletBalance ?? 0;
     if (balance < walletSpend) {
-      throw new MvpError('insufficient_wallet_balance', 'РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ СЃСЂРµРґСЃС‚РІ РІ РєРѕС€РµР»СЊРєРµ');
+      throw new MvpError('insufficient_wallet_balance', 'Недостаточно средств в кошельке');
     }
     users[userIndex].walletBalance = balance - walletSpend;
   }
@@ -1193,7 +1193,7 @@ export function joinSession(input: {
     type: 'debit',
     amount: walletSpend,
     source: 'wallet_spend',
-    description: `РЎРїРёСЃР°РЅРѕ РёР· РєРѕС€РµР»СЊРєР° Р·Р° СЃР»РѕС‚ #${slotNumber} РІ ${family.name}`,
+    description: `Списано из кошелька за слот #${slotNumber} в ${family.name}`,
     relatedSessionId: session.id,
     relatedOrderId: order.id,
     createdAt: nowIso(),
@@ -1232,7 +1232,7 @@ export function createWithdrawalRequest(input: {
 
   const availableBalance = users[userIndex].walletBalance ?? 0;
   if (availableBalance < input.amount) {
-    throw new MvpError('insufficient_balance', 'РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ СЃСЂРµРґСЃС‚РІ РІ РєРѕС€РµР»СЊРєРµ');
+    throw new MvpError('insufficient_balance', 'Недостаточно средств в кошельке');
   }
 
   const feeAmount = Math.ceil(input.amount * DEFAULT_WITHDRAWAL_FEE_RATE);
