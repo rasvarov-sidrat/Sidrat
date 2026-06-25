@@ -151,7 +151,7 @@ export function formatRuble(value: number) {
 export const demoUsers: User[] = [
   {
     id: 'buyer-demo',
-    email: 'buyer@sidrat.local',
+    email: 'buyer@example.com',
     name: 'Demo Buyer',
     role: 'buyer',
     emailVerifiedAt: demoIso(),
@@ -161,7 +161,7 @@ export const demoUsers: User[] = [
   },
   {
     id: 'seller-demo',
-    email: 'seller@sidrat.local',
+    email: 'seller@example.com',
     name: 'Demo Seller',
     role: 'seller',
     emailVerifiedAt: demoIso(),
@@ -171,7 +171,7 @@ export const demoUsers: User[] = [
   },
   {
     id: 'admin-demo',
-    email: 'admin@sidrat.local',
+    email: 'admin@example.com',
     name: 'Admin User',
     role: 'admin',
     emailVerifiedAt: demoIso(),

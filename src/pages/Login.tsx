@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { apiFetch } from '@/lib/api';
-import { setAuthSession } from '@/lib/auth';
+import { apiFetch, IS_OFFLINE_DEMO } from '@/lib/api';
+import { setAuthSession, loginWithDemoCredentials } from '@/lib/auth';
 import type { User } from '@/types';
 
 interface LoginProps {
@@ -26,6 +26,15 @@ export default function Login({ onLogin }: LoginProps) {
     event.preventDefault();
     setLoading(true);
     try {
+      const demoUser = loginWithDemoCredentials(email, password);
+      if (demoUser) {
+        setAuthSession(demoUser, 'demo-local-token');
+        onLogin(demoUser);
+        toast({ title: 'Demo вход', description: `Вы вошли как ${demoUser.name} (без backend)` });
+        navigate(from, { replace: true });
+        return;
+      }
+
       const result = await apiFetch<{ accessToken: string; user: User }>('/api/v1/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
@@ -45,7 +54,11 @@ export default function Login({ onLogin }: LoginProps) {
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-900">Вход</h2>
-      <p className="mt-2 text-sm text-gray-600">Вход идёт через backend. Нужен уже подтверждённый e-mail.</p>
+      <p className="mt-2 text-sm text-gray-600">
+        {IS_OFFLINE_DEMO
+          ? 'На Vercel работает demo-режим: вход без backend, данные из localStorage.'
+          : 'Вход идёт через backend. Нужен уже подтверждённый e-mail.'}
+      </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div>

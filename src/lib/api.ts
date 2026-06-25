@@ -1,4 +1,5 @@
-export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8006';
+export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? 'http://localhost:8006' : '');
+export const IS_OFFLINE_DEMO = import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL;
 export const AUTH_TOKEN_KEY = 'sidrat_auth_token';
 
 const USER_ID_MAP: Record<string, string> = {
@@ -64,6 +65,10 @@ function formatApiError(body: unknown, fallback: string): string {
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  if (IS_OFFLINE_DEMO) {
+    throw new Error('Не удалось связаться с сервером. Проверьте, что backend запущен.');
+  }
+
   const authToken = getAuthToken();
   const currentUserId = getCurrentUserId();
   let response: Response;
