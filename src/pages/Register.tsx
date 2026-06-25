@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { apiFetch } from '@/lib/api';
-import { setAuthSession } from '@/lib/auth';
+import { apiFetch, IS_OFFLINE_DEMO } from '@/lib/api';
+import { registerDemoUser, setAuthSession } from '@/lib/auth';
 import { findUserByReferralCode } from '@/lib/mvp';
 import type { User } from '@/types';
 
@@ -51,6 +51,23 @@ export default function Register({ onRegister }: RegisterProps) {
     }
 
     try {
+      if (IS_OFFLINE_DEMO) {
+        const user = registerDemoUser({
+          name,
+          email,
+          password,
+          referralCode: referralCode || null,
+        });
+        setAuthSession(user, 'demo-local-token');
+        onRegister(user);
+        toast({
+          title: 'Demo регистрация',
+          description: 'Аккаунт создан в этом браузере. Потом можно войти тем же email и паролем.',
+        });
+        navigate(from, { replace: true });
+        return;
+      }
+
       await apiFetch('/api/v1/auth/register/request-code', {
         method: 'POST',
         body: JSON.stringify({
@@ -96,7 +113,11 @@ export default function Register({ onRegister }: RegisterProps) {
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-900">Регистрация</h2>
-      <p className="mt-2 text-sm text-gray-600">Buyer-регистрация идёт через e-mail код подтверждения. Seller-заявка находится внизу сайта.</p>
+      <p className="mt-2 text-sm text-gray-600">
+        {IS_OFFLINE_DEMO
+          ? 'На Vercel регистрация работает в demo-режиме: аккаунт сохраняется в этом браузере без e-mail кода.'
+          : 'Buyer-регистрация идёт через e-mail код подтверждения. Seller-заявка находится внизу сайта.'}
+      </p>
       {referrer ? (
         <div className="mt-4 rounded-2xl border border-[#2A7F6E]/15 bg-[#2A7F6E]/5 p-4 text-sm text-[#17493f]">
           Вы пришли по приглашению <span className="font-medium">{referrer.name}</span>. После подтверждённых покупок этот пользователь будет получать 1% reward.
@@ -119,7 +140,7 @@ export default function Register({ onRegister }: RegisterProps) {
           <Label htmlFor="email">Email</Label>
           <div className="relative mt-1">
             <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" placeholder="ivan@sidrat.local" />
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" placeholder="ivan@example.com" />
           </div>
         </div>
         <div>
@@ -176,7 +197,7 @@ export default function Register({ onRegister }: RegisterProps) {
           {step === 'details' ? (
             <>
               <Send className="mr-2 h-4 w-4" />
-              Отправить код
+              {IS_OFFLINE_DEMO ? 'Создать аккаунт' : 'Отправить код'}
             </>
           ) : (
             'Подтвердить и создать аккаунт'
