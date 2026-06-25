@@ -24,7 +24,7 @@ const STORAGE_KEYS = {
 } as const;
 
 const STORAGE_SCHEMA_VERSION_KEY = 'sidrat_storage_schema_version';
-const STORAGE_SCHEMA_VERSION = 2;
+const STORAGE_SCHEMA_VERSION = 3;
 const DEMO_SEED_ISO = '2026-06-24T00:00:00.000Z';
 const DEMO_SEED_DATE = new Date(DEMO_SEED_ISO);
 const DEMO_SEED_FUTURE_ISO = new Date(DEMO_SEED_DATE.getTime() + 72 * 60 * 60 * 1000).toISOString();
@@ -567,13 +567,76 @@ const demoOrders: Order[] = [
   },
 ];
 
+function looksLikeMojibake(text: string) {
+  return /(?:Р.|С.){3,}/.test(text) || (text.includes('Р') && /[°±µ]/.test(text));
+}
+
+function decodeMojibake(text: string) {
+  if (!text || !looksLikeMojibake(text)) return text;
+  try {
+    const bytes = Uint8Array.from(text, (char) => char.charCodeAt(0) & 0xff);
+    const decoded = new TextDecoder('utf-8').decode(bytes);
+    if (decoded && !looksLikeMojibake(decoded)) return decoded;
+  } catch {
+    // ignore decode failures
+  }
+  return text;
+}
+
+const demoProductsById = new Map<string, Product>(
+  demoProducts.map((product) => [product.id, product] as const),
+);
+
+function repairStoredProduct(product: Product) {
+  const seed = demoProductsById.get(product.id);
+  if (seed) {
+    return {
+      ...product,
+      description: seed.description,
+      specs: seed.specs ?? product.specs,
+    };
+  }
+
+  const description = decodeMojibake(product.description);
+  const specs = product.specs
+    ? Object.fromEntries(
+        Object.entries(product.specs).map(([key, value]) => [
+          decodeMojibake(key),
+          decodeMojibake(String(value)),
+        ]),
+      )
+    : product.specs;
+
+  if (description === product.description && specs === product.specs) {
+    return product;
+  }
+
+  return {
+    ...product,
+    description,
+    specs,
+  };
+}
+
 function mergeSeedProducts(existingProducts: Product[]) {
   const byId = new Map(existingProducts.map((product) => [product.id, product]));
   let changed = false;
 
   for (const product of demoProducts) {
-    if (!byId.has(product.id)) {
+    const existing = byId.get(product.id);
+    if (!existing) {
       byId.set(product.id, product);
+      changed = true;
+      continue;
+    }
+
+    const merged = repairStoredProduct({
+      ...existing,
+      description: product.description,
+      specs: product.specs ?? existing.specs,
+    });
+    if (JSON.stringify(merged) !== JSON.stringify(existing)) {
+      byId.set(product.id, merged);
       changed = true;
     }
   }
@@ -619,7 +682,7 @@ function normalizeProductMedia(product: Product) {
 }
 
 function normalizeStoredProduct(product: Product) {
-  return normalizeProductMedia(normalizeFootwearProduct(product));
+  return repairStoredProduct(normalizeProductMedia(normalizeFootwearProduct(product)));
 }
 
 function mergeSeedOrders(existingOrders: Order[]) {
@@ -762,7 +825,14 @@ export function findUserByReferralCode(referralCode: string) {
 }
 
 export function loadProducts(): Product[] {
-  return readStorage<Product[]>(STORAGE_KEYS.products, []);
+  const products = readStorage<Product[]>(STORAGE_KEYS.products, []);
+  if (products.length === 0) return products;
+
+  const repaired = products.map(normalizeStoredProduct);
+  if (repaired.some((product, index) => product !== products[index])) {
+    writeStorage(STORAGE_KEYS.products, repaired);
+  }
+  return repaired;
 }
 
 export function saveProducts(products: Product[]) {

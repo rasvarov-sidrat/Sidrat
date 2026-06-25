@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { BadgePercent, Store, Users, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import HeroCarousel from '@/components/HeroCarousel';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, IS_OFFLINE_DEMO } from '@/lib/api';
 import { fetchCmsPage } from '@/lib/cms';
 import { formatRuble, getProductCoverImage, getProductImages, loadProducts } from '@/lib/mvp';
 import type { Product } from '@/types';
@@ -13,6 +13,9 @@ export default function Home() {
   const productsQuery = useQuery({
     queryKey: ['home-catalog'],
     queryFn: async () => {
+      if (IS_OFFLINE_DEMO) {
+        return loadProducts().slice(0, 3);
+      }
       try {
         return await apiFetch<Product[]>(`/api/v1/catalog?limit=3`);
       } catch {

@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Search, Users, BadgePercent, Layers3 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { catalogCategories, getCatalogCategory, getCatalogGroup, productMatchesCatalogCategory } from '@/lib/catalog';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, IS_OFFLINE_DEMO } from '@/lib/api';
 import { fetchCmsPage } from '@/lib/cms';
 import { formatRuble, getFamilyActiveSessions, getProductCoverImage, getProductImages, loadProducts, getCurrentUser } from '@/lib/mvp';
 import { canCreateGb, isVerifiedUser } from '@/lib/auth';
@@ -23,6 +23,9 @@ export default function Catalog() {
   const productsQuery = useQuery({
     queryKey: ['catalog'],
     queryFn: async () => {
+      if (IS_OFFLINE_DEMO) {
+        return loadProducts();
+      }
       try {
         return await apiFetch<Product[]>(`/api/v1/catalog?limit=100`);
       } catch {
